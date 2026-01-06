@@ -23,7 +23,7 @@ func (r *Renderer) AddSection() {
 
 	// Silently Fail if cannot add
 	if r.contentHeight <= r.actualContentHeight {
-		slog.Error("Cannot add any more sections", "actualHeight", r.actualContentHeight,
+		slog.Error("Cannot add any more sections", "name", r.name, "actualHeight", r.actualContentHeight,
 			"contentHeight", r.contentHeight)
 		return
 	}
@@ -39,7 +39,7 @@ func (r *Renderer) AddSection() {
 
 	remainingHeight := r.contentHeight - r.actualContentHeight
 	r.contentSections = append(r.contentSections,
-		NewContentRenderer(remainingHeight, r.contentWidth, r.defTruncateStyle))
+		NewContentRenderer(remainingHeight, r.contentWidth, r.defTruncateStyle, r.name))
 	// Adjust index
 	r.curSectionIdx++
 }
@@ -47,6 +47,11 @@ func (r *Renderer) AddSection() {
 // Truncate would always preserve ansi codes.
 func (r *Renderer) AddLineWithCustomTruncate(line string, truncateStyle TruncateStyle) {
 	r.contentSections[r.curSectionIdx].AddLineWithCustomTruncate(line, truncateStyle)
+}
+
+func (r *Renderer) AddStyleModifier(modifier StyleModifier) *Renderer {
+	r.styleModifiers = append(r.styleModifiers, modifier)
+	return r
 }
 
 func (r *Renderer) SetBorderTitle(title string) {
@@ -82,6 +87,7 @@ func (r *Renderer) Render() string {
 	contentStr := strings.TrimSuffix(content.String(), "\n")
 	res := r.Style().Render(contentStr)
 	// Post rendering validations - Maybe we can return an error instead of logging
+	// TODO(perf): This can be disabled to improve performance
 	maxW := 0
 	for line := range strings.Lines(res) {
 		maxW = max(maxW, ansi.StringWidth(line))
@@ -89,8 +95,19 @@ func (r *Renderer) Render() string {
 
 	lineCnt := strings.Count(res, "\n") + 1
 	if maxW > r.totalWidth || lineCnt > r.totalHeight {
-		slog.Error("Rendered output data", "lineCnt", lineCnt, "totalHeight", r.totalHeight,
-			"totalWidth", r.totalWidth, "maxW", maxW)
+		slog.Error(
+			"Rendered output data inconsistency",
+			"name",
+			r.name,
+			"lineCnt",
+			lineCnt,
+			"totalHeight",
+			r.totalHeight,
+			"totalWidth",
+			r.totalWidth,
+			"maxW",
+			maxW,
+		)
 		// lipgloss Render() doesn't always respects the "height" value,
 		// so res can have more height than intended. In that case, we must truncate lines here.
 		newRes := strings.Builder{}
@@ -117,8 +134,13 @@ func (r *Renderer) Style() lipgloss.Style {
 	if r.truncateHeight {
 		contentHeight = r.actualContentHeight
 	}
-	s := lipgloss.NewStyle().
-		Width(r.contentWidth).
+	s := lipgloss.NewStyle()
+
+	for _, modifier := range r.styleModifiers {
+		s = modifier(s)
+	}
+
+	s = s.Width(r.contentWidth).
 		Height(contentHeight).
 		Background(r.contentBGColor).
 		Foreground(r.contentFGColor)

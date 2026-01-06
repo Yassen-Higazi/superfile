@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/yorukot/superfile/src/internal/common"
+	"github.com/yorukot/superfile/src/internal/ui/filepanel"
 	"github.com/yorukot/superfile/src/internal/utils"
 )
 
@@ -55,25 +56,25 @@ func (m *model) createItem() {
 
 // Cancel rename file or directory
 func (m *model) cancelRename() {
-	panel := &m.fileModel.filePanels[m.filePanelFocusIndex]
-	panel.rename.Blur()
-	panel.renaming = false
-	m.fileModel.renaming = false
+	panel := m.getFocusedFilePanel()
+	panel.Rename.Blur()
+	panel.Renaming = false
+	m.fileModel.Renaming = false
 }
 
 // Connfirm rename file or directory
 func (m *model) confirmRename() {
-	panel := &m.fileModel.filePanels[m.filePanelFocusIndex]
+	panel := m.getFocusedFilePanel()
 
 	// Although we dont expect this to happen based on our current flow
 	// Just adding it here to be safe
-	if len(panel.element) == 0 {
+	if len(panel.Element) == 0 {
 		slog.Error("confirmRename called on empty panel")
 		return
 	}
 
-	oldPath := panel.element[panel.cursor].location
-	newPath := filepath.Join(panel.location, panel.rename.Value())
+	oldPath := panel.Element[panel.Cursor].Location
+	newPath := filepath.Join(panel.Location, panel.Rename.Value())
 
 	// Rename the file
 	err := os.Rename(oldPath, newPath)
@@ -81,64 +82,64 @@ func (m *model) confirmRename() {
 		slog.Error("Error while confirmRename during rename", "error", err)
 		// Dont return. We have to also reset the panel and model information
 	}
-	m.fileModel.renaming = false
-	panel.rename.Blur()
-	panel.renaming = false
+	m.fileModel.Renaming = false
+	panel.Rename.Blur()
+	panel.Renaming = false
 }
 
 func (m *model) openSortOptionsMenu() {
-	panel := &m.fileModel.filePanels[m.filePanelFocusIndex]
-	panel.sortOptions.open = true
+	panel := m.getFocusedFilePanel()
+	panel.SortOptions.Open = true
 }
 
 func (m *model) cancelSortOptions() {
-	panel := &m.fileModel.filePanels[m.filePanelFocusIndex]
-	panel.sortOptions.cursor = panel.sortOptions.data.selected
-	panel.sortOptions.open = false
+	panel := m.getFocusedFilePanel()
+	panel.SortOptions.Cursor = panel.SortOptions.Data.Selected
+	panel.SortOptions.Open = false
 }
 
 func (m *model) confirmSortOptions() {
-	panel := &m.fileModel.filePanels[m.filePanelFocusIndex]
-	panel.sortOptions.data.selected = panel.sortOptions.cursor
-	panel.sortOptions.open = false
+	panel := m.getFocusedFilePanel()
+	panel.SortOptions.Data.Selected = panel.SortOptions.Cursor
+	panel.SortOptions.Open = false
 }
 
 // Move the cursor up in the sort options menu
 func (m *model) sortOptionsListUp() {
-	panel := &m.fileModel.filePanels[m.filePanelFocusIndex]
-	if panel.sortOptions.cursor > 0 {
-		panel.sortOptions.cursor--
+	panel := m.getFocusedFilePanel()
+	if panel.SortOptions.Cursor > 0 {
+		panel.SortOptions.Cursor--
 	} else {
-		panel.sortOptions.cursor = len(panel.sortOptions.data.options) - 1
+		panel.SortOptions.Cursor = len(panel.SortOptions.Data.Options) - 1
 	}
 }
 
 // Move the cursor down in the sort options menu
 func (m *model) sortOptionsListDown() {
-	panel := &m.fileModel.filePanels[m.filePanelFocusIndex]
-	if panel.sortOptions.cursor < len(panel.sortOptions.data.options)-1 {
-		panel.sortOptions.cursor++
+	panel := m.getFocusedFilePanel()
+	if panel.SortOptions.Cursor < len(panel.SortOptions.Data.Options)-1 {
+		panel.SortOptions.Cursor++
 	} else {
-		panel.sortOptions.cursor = 0
+		panel.SortOptions.Cursor = 0
 	}
 }
 
 func (m *model) toggleReverseSort() {
-	panel := &m.fileModel.filePanels[m.filePanelFocusIndex]
-	panel.sortOptions.data.reversed = !panel.sortOptions.data.reversed
+	panel := m.getFocusedFilePanel()
+	panel.SortOptions.Data.Reversed = !panel.SortOptions.Data.Reversed
 }
 
 // Cancel search, this will clear all searchbar input
 func (m *model) cancelSearch() {
-	panel := &m.fileModel.filePanels[m.filePanelFocusIndex]
-	panel.searchBar.Blur()
-	panel.searchBar.SetValue("")
+	panel := m.getFocusedFilePanel()
+	panel.SearchBar.Blur()
+	panel.SearchBar.SetValue("")
 }
 
 // Confirm search. This will exit the search bar and filter the files
 func (m *model) confirmSearch() {
-	panel := &m.fileModel.filePanels[m.filePanelFocusIndex]
-	panel.searchBar.Blur()
+	panel := m.getFocusedFilePanel()
+	panel.SearchBar.Blur()
 }
 
 // Help menu panel list up
@@ -289,4 +290,8 @@ func (m *model) openHelpMenu() {
 func (m *model) quitHelpMenu() {
 	m.helpMenu.searchBar.Reset()
 	m.helpMenu.open = false
+}
+
+func (m *model) getFocusedFilePanel() *filepanel.Model {
+	return m.fileModel.GetFocusedFilePanel()
 }
