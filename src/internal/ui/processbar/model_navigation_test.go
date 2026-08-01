@@ -23,8 +23,8 @@ func genProcessBarModel(count int, cursor int, render int, viewHeight int) Model
 	for i := range count {
 		pID := strconv.Itoa(i)
 		pMap[pID] = Process{
-			ID:   pID,
-			Name: pID,
+			ID:          pID,
+			CurrentFile: pID,
 		}
 	}
 	return Model{
@@ -164,9 +164,9 @@ func Test_processBarModelUpDown(t *testing.T) {
 			pModel := genProcessBarModel(tt.processCnt, tt.cursor, tt.render, tt.footerHeight)
 			assert.True(t, pModel.isValid())
 			if tt.listDown {
-				pModel.ListDown(tt.footerHeight)
+				pModel.ListDown()
 			} else {
-				pModel.ListUp(tt.footerHeight)
+				pModel.ListUp()
 			}
 
 			assert.Equal(t, tt.expectedCursor, pModel.cursor)

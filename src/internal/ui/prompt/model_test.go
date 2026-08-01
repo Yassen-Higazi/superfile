@@ -6,15 +6,18 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/yorukot/superfile/src/pkg/utils"
+
 	"github.com/yorukot/superfile/src/config/icon"
 	"github.com/yorukot/superfile/src/internal/common"
-	"github.com/yorukot/superfile/src/internal/utils"
 )
 
 // Initialize the globals we need for testing
@@ -71,7 +74,7 @@ func TestModel_HandleUpdate(t *testing.T) {
 			m.Open(true)
 			assert.True(t, m.IsOpen())
 
-			action, _ := m.HandleUpdate(tea.KeyMsg{Type: tea.KeyEnter}, defaultTestCwd)
+			action, _ := m.HandleUpdate(tea.KeyPressMsg{Code: tea.KeyEnter}, defaultTestCwd)
 			assert.Equal(t, openAfterEnter, m.IsOpen())
 			assert.Equal(t, common.NoAction{}, action)
 			assert.Empty(t, m.resultMsg)
@@ -90,11 +93,11 @@ func TestModel_HandleUpdate(t *testing.T) {
 		action, _ := m.HandleUpdate(utils.TeaRuneKeyMsg(SplitCommand), defaultTestCwd)
 		assert.Equal(t, common.NoAction{}, action)
 
-		action, _ = m.HandleUpdate(tea.KeyMsg{Type: tea.KeyEnter}, defaultTestCwd)
+		action, _ = m.HandleUpdate(tea.KeyPressMsg{Code: tea.KeyEnter}, defaultTestCwd)
 		assert.Equal(t, common.SplitPanelAction{}, action)
 
 		_, _ = m.HandleUpdate(utils.TeaRuneKeyMsg("bad_command"), defaultTestCwd)
-		action, _ = m.HandleUpdate(tea.KeyMsg{Type: tea.KeyEnter}, defaultTestCwd)
+		action, _ = m.HandleUpdate(tea.KeyPressMsg{Code: tea.KeyEnter}, defaultTestCwd)
 		assert.Equal(t, common.NoAction{}, action)
 		assert.False(t, m.LastActionSucceeded())
 		assert.NotEmpty(t, m.resultMsg)
@@ -102,14 +105,14 @@ func TestModel_HandleUpdate(t *testing.T) {
 		m.setShellMode(true)
 		command := "abc def /xyz"
 		_, _ = m.HandleUpdate(utils.TeaRuneKeyMsg(command), defaultTestCwd)
-		action, _ = m.HandleUpdate(tea.KeyMsg{Type: tea.KeyEnter}, defaultTestCwd)
+		action, _ = m.HandleUpdate(tea.KeyPressMsg{Code: tea.KeyEnter}, defaultTestCwd)
 		assert.Equal(t, common.ShellCommandAction{Command: command}, action)
 	})
 
 	t.Run("Validate Cancel typing", func(t *testing.T) {
 		m := defaultTestModel()
 
-		actualTest := func(closeKey tea.KeyMsg, shouldBeOpen bool) {
+		actualTest := func(closeKey tea.KeyPressMsg, shouldBeOpen bool) {
 			m.Open(true)
 			_, _ = m.HandleUpdate(utils.TeaRuneKeyMsg("xyz"), defaultTestCwd)
 			action, _ := m.HandleUpdate(closeKey, defaultTestCwd)
@@ -117,9 +120,9 @@ func TestModel_HandleUpdate(t *testing.T) {
 			assert.Equal(t, shouldBeOpen, m.IsOpen())
 		}
 
-		actualTest(tea.KeyMsg{Type: tea.KeyCtrlC}, false)
-		actualTest(tea.KeyMsg{Type: tea.KeyEscape}, false)
-		actualTest(tea.KeyMsg{Type: tea.KeyCtrlD}, true)
+		actualTest(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl}, false)
+		actualTest(tea.KeyPressMsg{Code: tea.KeyEscape}, false)
+		actualTest(tea.KeyPressMsg{Code: 'd', Mod: tea.ModCtrl}, true)
 	})
 
 	t.Run("Switching between shell and SPF mode", func(t *testing.T) {
@@ -153,24 +156,35 @@ func TestModel_HandleUpdate(t *testing.T) {
 	t.Run("Validate Cursor Blink update", func(t *testing.T) {
 		m := defaultTestModel()
 		m.Open(true)
-		assert.False(t, m.textInput.Cursor.Blink)
+		m.textInput.SetValue("abc")
 
-		blinkMsg := m.textInput.Cursor.BlinkCmd()()
-		action, _ := m.HandleUpdate(blinkMsg, defaultTestCwd)
+		styles := m.textInput.Styles()
+		styles.Cursor.Blink = true
+		styles.Cursor.BlinkSpeed = time.Nanosecond
+		m.textInput.SetStyles(styles)
+
+		initialRender := m.textInput.View()
+
+		action, cmd := m.HandleUpdate(textinput.Blink(), defaultTestCwd)
 		assert.Equal(t, common.NoAction{}, action)
-		assert.True(t, m.textInput.Cursor.Blink)
+		assert.True(t, m.IsOpen())
+		assert.Equal(t, "abc", m.textInput.Value())
+		require.NotNil(t, cmd)
+		assert.Equal(t, initialRender, m.textInput.View())
 
-		blinkMsg = m.textInput.Cursor.BlinkCmd()()
-		action, _ = m.HandleUpdate(blinkMsg, defaultTestCwd)
+		action, cmd = m.HandleUpdate(cmd(), defaultTestCwd)
 		assert.Equal(t, common.NoAction{}, action)
-		assert.False(t, m.textInput.Cursor.Blink)
+		assert.True(t, m.IsOpen())
+		assert.Equal(t, "abc", m.textInput.Value())
+		require.NotNil(t, cmd)
 
-		blinkMsg = m.textInput.Cursor.BlinkCmd()()
-		action, _ = m.HandleUpdate(blinkMsg, defaultTestCwd)
+		blinkedRender := m.textInput.View()
+		assert.NotEqual(t, initialRender, blinkedRender)
+		action, _ = m.HandleUpdate(cmd(), defaultTestCwd)
 		assert.Equal(t, common.NoAction{}, action)
-		assert.True(t, m.textInput.Cursor.Blink)
-
-		// We could test BlinkCancelled and initialBlink as well, but that's too much for now
+		assert.True(t, m.IsOpen())
+		assert.Equal(t, "abc", m.textInput.Value())
+		assert.Equal(t, initialRender, m.textInput.View())
 	})
 }
 
@@ -182,21 +196,47 @@ func TestModel_HandleResults(t *testing.T) {
 
 		// Validate close happens when closeOnSuccess is true
 		assert.True(t, m.LastActionSucceeded())
-		assert.Equal(t, "Command exited with status 0", m.resultMsg)
+		assert.Equal(t, "Command exited with status 0 (No output)", m.resultMsg)
 		assert.False(t, m.IsOpen())
 
 		m.Open(true)
 		m.HandleShellCommandResults(1, "")
 		assert.False(t, m.LastActionSucceeded())
-		assert.Equal(t, "Command exited with status 1", m.resultMsg)
+		assert.Equal(t, "Command exited with status 1 (No output)", m.resultMsg)
 		assert.True(t, m.IsOpen())
 
 		m.closeOnSuccess = false
 		m.HandleShellCommandResults(0, "")
 		// Validate that close does not happen when closeOnSuccess is true
 		assert.True(t, m.LastActionSucceeded())
-		assert.Equal(t, "Command exited with status 0", m.resultMsg)
+		assert.Equal(t, "Command exited with status 0 (No output)", m.resultMsg)
 		assert.True(t, m.IsOpen())
+	})
+
+	t.Run("Verify Shell command output is displayed", func(t *testing.T) {
+		m := defaultTestModel()
+		m.closeOnSuccess = false
+		m.Open(true)
+
+		// Test with single line output
+		m.HandleShellCommandResults(0, "hello world")
+		assert.Equal(t, "Command exited with status 0, Output:\nhello world", m.resultMsg)
+
+		// Test with multi-line output
+		m.HandleShellCommandResults(0, "line1\nline2\nline3")
+		assert.Equal(t, "Command exited with status 0, Output:\nline1\nline2\nline3", m.resultMsg)
+
+		// Test output is trimmed
+		m.HandleShellCommandResults(0, "  trimmed output  \n")
+		assert.Equal(t, "Command exited with status 0, Output:\ntrimmed output", m.resultMsg)
+
+		m.HandleShellCommandResults(0, "ESC SEQ\x1b[2;6H")
+		assert.Equal(t, "Command exited with status 0, Output:\nESC SEQ[2;6H", m.resultMsg)
+
+		// Test with failed command and output
+		m.HandleShellCommandResults(1, "error message")
+		assert.False(t, m.LastActionSucceeded())
+		assert.Equal(t, "Command exited with status 1, Output:\nerror message", m.resultMsg)
 	})
 
 	t.Run("Verify SPF results update", func(t *testing.T) {
@@ -257,7 +297,7 @@ func TestModel_Render(t *testing.T) {
 			"├──────────────────────────────────────┤\n" +
 			"│ ':' - Get into Shell mode            │\n" +
 			"│ 'open <PATH>' - Open a new panel at a│\n" +
-			"│ 'split' - Open a new panel at a curre│\n" +
+			"│ 'split' - Open a new panel at the cur│\n" +
 			"│ 'cd <PATH>' - Change directory of cur│\n" +
 			"╰──────────────────────────────────────╯"
 		assert.Equal(t, exp, res)
@@ -270,7 +310,9 @@ func TestModel_Render(t *testing.T) {
 			m := GenerateModel(spfPromptChar, shellPromptChar, true, 10, width)
 			m.Open(true)
 			m.textInput.SetValue(input)
-			m.textInput.Cursor.Blink = false
+			styles := m.textInput.Styles()
+			styles.Cursor.Blink = false
+			m.textInput.SetStyles(styles)
 			res := ansi.Strip(m.Render())
 			inputLine := strings.Split(res, "\n")[1]
 			require.Equal(t, width, ansi.StringWidth(inputLine))
@@ -300,7 +342,7 @@ func TestModel_Render(t *testing.T) {
 			"├────────────────────────────────────────────────┤\n" +
 			"│ '>' - Get into SPF mode                        │\n" +
 			"├────────────────────────────────────────────────┤\n" +
-			"│ Success : Command exited with status 0         │\n" +
+			"│ Success : Command exited with status 0 (No outp│\n" +
 			"╰────────────────────────────────────────────────╯"
 		assert.Equal(t, exp, res)
 		m.HandleShellCommandResults(1, "")
@@ -313,7 +355,7 @@ func TestModel_Render(t *testing.T) {
 			"├────────────────────────────────────────────────┤\n" +
 			"│ '>' - Get into SPF mode                        │\n" +
 			"├────────────────────────────────────────────────┤\n" +
-			"│ Error : Command exited with status 1           │\n" +
+			"│ Error : Command exited with status 1 (No output│\n" +
 			"╰────────────────────────────────────────────────╯"
 		assert.Equal(t, exp, res)
 	})

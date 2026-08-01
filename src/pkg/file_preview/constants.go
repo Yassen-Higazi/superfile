@@ -5,8 +5,8 @@ import "time"
 // Image preview constants
 const (
 	// Cache configuration
-	defaultThumbnailCacheSize = 100 // Default number of thumbnails to cache
-	defaultCacheExpiration    = 5 * time.Minute
+	defaultImagePreviewCacheSize = 100
+	defaultCacheExpiration       = 5 * time.Minute
 
 	// Image processing
 	heightScaleFactor = 2  // Factor for height scaling in terminal display
@@ -22,6 +22,9 @@ const (
 	// RGB color masks
 	rgbMask     = 0xFF // Mask for extracting 8-bit RGB channel values
 	alphaOpaque = 255  // Fully opaque alpha channel value
+
+	// Kitty quiet mode: suppress both OK and error responses
+	kittyQuietAll = 2
 
 	maxVideoFileSizeForThumb = "104857600" // 100MB limit
 	thumbOutputExt           = ".jpg"

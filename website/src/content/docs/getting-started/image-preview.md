@@ -18,19 +18,19 @@ superfile supports image previews directly in your terminal using several displa
 
 superfile automatically detects your terminal using the `$TERM` and `$TERM_PROGRAM` environment variables. We support rendering on the following terminals:
 
-| Terminal              | Protocol         | Image Preview Support |
-|-----------------------|------------------|------------------------|
-| **kitty**             | Kitty protocol   | ✅                     |
-| **WezTerm**           | Kitty protocol   | ✅                     |
-| **Ghostty**           | Kitty protocol   | ✅                     |
-| **iTerm2**            | Inline images    | ❌                     |
-| **Konsole**           | Inline images    | ❌                     |
-| **VSCode**            | Inline images    | ❌                     |
-| **Tabby**             | Inline images    | ❌                     |
-| **Hyper**             | Inline images    | ❌                     |
-| **Mintty**            | Inline images    | ❌                     |
-| **foot**              | Sixel graphics   | ❌                     |
-| **Black Box**         | Sixel graphics   | ❌                     |
+| Terminal      | Protocol       | Image Preview Support |
+| ------------- | -------------- | --------------------- |
+| **kitty**     | Kitty protocol | ✅                    |
+| **WezTerm**   | Kitty protocol | ✅                    |
+| **Ghostty**   | Kitty protocol | ✅                    |
+| **iTerm2**    | Inline images  | ❌                    |
+| **Konsole**   | Inline images  | ❌                    |
+| **VSCode**    | Inline images  | ❌                    |
+| **Tabby**     | Inline images  | ❌                    |
+| **Hyper**     | Inline images  | ❌                    |
+| **Mintty**    | Inline images  | ❌                    |
+| **foot**      | Sixel graphics | ❌                    |
+| **Black Box** | Sixel graphics | ❌                    |
 
 > ✅ means full support for inline image preview using Kitty protocol  
 > ❌ means image preview is currently not supported
@@ -41,12 +41,12 @@ superfile automatically detects your terminal using the `$TERM` and `$TERM_PROGR
 
 superfile supports the following rendering protocols and will automatically choose the best one based on your terminal:
 
-| Protocol Name     | Description                                                                                   | Status      |
-|-------------------|-----------------------------------------------------------------------------------------------|-------------|
-| **Kitty protocol** | Most capable, pixel-accurate rendering with transparency and scaling support.                | ✅ Preferred|
-| **Sixel**          | Old standard used in DEC terminals and some modern ones like foot.                           | ❌          |
-| **iTerm2 inline**  | iTerm2’s proprietary image format, used in Tabby, Hyper, etc.                                | ❌          |
-| **ANSI**           | Fallback text rendering using ANSI blocks or metadata only.                                  | ✅ Always   |
+| Protocol Name      | Description                                                                   | Status       |
+| ------------------ | ----------------------------------------------------------------------------- | ------------ |
+| **Kitty protocol** | Most capable, pixel-accurate rendering with transparency and scaling support. | ✅ Preferred |
+| **Sixel**          | Old standard used in DEC terminals and some modern ones like foot.            | ❌           |
+| **iTerm2 inline**  | iTerm2’s proprietary image format, used in Tabby, Hyper, etc.                 | ❌           |
+| **ANSI**           | Fallback text rendering using ANSI blocks or metadata only.                   | ✅ Always    |
 
 ---
 
@@ -71,7 +71,7 @@ This sequence queries the terminal for the size of each **cell in pixels**. supe
 - Avoid distortions in previews
 - Adapt to terminal resizes
 
-If your terminal does not support `\x1b[16t`, we fallback to default assumptions like `10×20 px per cell`.
+If your terminal does not support `\x1b[16t`, we fall back to default assumptions like `10×20 px per cell`.
 
 ## Graceful Fallback to ANSI
 

@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/yorukot/superfile/src/internal/utils"
+	"github.com/yorukot/superfile/src/pkg/utils"
 )
 
 type PinnedManager struct {
@@ -15,6 +15,10 @@ type PinnedManager struct {
 }
 
 func NewPinnedFileManager(filePath string) PinnedManager {
+	if err := utils.InitJSONFile(filePath); err != nil {
+		slog.Error("Error initializing pinned JSON file", "error", err)
+	}
+
 	return PinnedManager{
 		filePath: filePath,
 	}

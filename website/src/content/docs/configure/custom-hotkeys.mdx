@@ -6,7 +6,7 @@ head:
     content: Custom hotkeys | superfile
 ---
 
-import CodeBlock from '../../../components/code.astro';
+import CodeBlock from "../../../components/code.astro";
 
 You can enter the following command to set it up;
 
@@ -17,19 +17,25 @@ $EDITOR HOTKEYS_PATH
 ```
 
 :::caution
-Please do not use hotkeys with ascii codes conflicting with keys used to control superfile : 
+
+Please do not use hotkeys with ascii codes conflicting with keys used to control superfile:
+
 - `Ctrl+M` - conflicts with `Enter` Key
 - `Ctrl+I` - conflicts with `Tab` Key
 - `Ctrl+?`, `Ctrl+[` - conflicts with `Delete` and `Backspace` Key
+
 :::
 
 ### Default superfile hotkeys
 
 :::caution
+
 If you are a vim user, the default hotkeys may make you hate superfile.
+
 :::
 
 superfile default hotkeys design concept:
+
 - All hotkeys that will change to files use `ctrl+key` (As long as you don't press ctrl your files will always be safe).
 - Non-control file classes use the first letters of words as hotkeys.
 

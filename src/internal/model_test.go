@@ -5,17 +5,26 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
+
+	"github.com/yorukot/superfile/src/pkg/utils"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	variable "github.com/yorukot/superfile/src/config"
 	"github.com/yorukot/superfile/src/internal/common"
+	"github.com/yorukot/superfile/src/internal/ui/notify"
 	"github.com/yorukot/superfile/src/internal/ui/processbar"
-	"github.com/yorukot/superfile/src/internal/utils"
+	"github.com/yorukot/superfile/src/internal/ui/prompt"
+	"github.com/yorukot/superfile/src/internal/ui/sidebar"
+	"github.com/yorukot/superfile/src/internal/ui/sortmodel"
+	"github.com/yorukot/superfile/src/internal/ui/spferror"
+	zoxideui "github.com/yorukot/superfile/src/internal/ui/zoxide"
 )
 
 /*
@@ -93,7 +102,7 @@ func TestBasic(t *testing.T) {
 		// 5 - clipboard is empty
 		// 6 - model's dimenstion
 
-		assert.Equal(t, dir1, m.getFocusedFilePanel().location)
+		assert.Equal(t, dir1, m.getFocusedFilePanel().Location)
 	})
 }
 
@@ -122,14 +131,14 @@ func TestInitialFilePathPositionsCursorWindow(t *testing.T) {
 	// Uncomment below to understand the distribution
 	// t.Logf("Heights : %d [%d - [%d] %d]\n", m.fullHeight, m.footerHeight, m.mainPanelHeight,
 	//	panelElementHeight(m.mainPanelHeight))
-	require.Len(t, m.fileModel.filePanels, 3)
-	assert.Equal(t, dir1, m.fileModel.filePanels[0].location)
-	assert.Equal(t, file2, m.fileModel.filePanels[1].getSelectedItem().location)
-	assert.Equal(t, 2, m.fileModel.filePanels[1].cursor)
-	assert.Equal(t, 0, m.fileModel.filePanels[1].render)
-	assert.Equal(t, file7, m.fileModel.filePanels[2].getSelectedItem().location)
-	assert.Equal(t, 7, m.fileModel.filePanels[2].cursor)
-	assert.Equal(t, 3, m.fileModel.filePanels[2].render)
+	require.Len(t, m.fileModel.FilePanels, 3)
+	assert.Equal(t, dir1, m.fileModel.FilePanels[0].Location)
+	assert.Equal(t, file2, m.fileModel.FilePanels[1].GetFocusedItem().Location)
+	assert.Equal(t, 2, m.fileModel.FilePanels[1].GetCursor())
+	assert.Equal(t, 0, m.fileModel.FilePanels[1].GetRenderIndex())
+	assert.Equal(t, file7, m.fileModel.FilePanels[2].GetFocusedItem().Location)
+	assert.Equal(t, 7, m.fileModel.FilePanels[2].GetCursor())
+	assert.Equal(t, 3, m.fileModel.FilePanels[2].GetRenderIndex())
 }
 
 func TestQuit(t *testing.T) {
@@ -281,4 +290,144 @@ func TestChooserFile(t *testing.T) {
 			}
 		})
 	}
+}
+
+func eventuallyEnsurePreviewContent(t *testing.T, m *model, content string, msgAndArgs ...any) {
+	contains := false
+	assert.Eventually(t, func() bool {
+		contains = strings.Contains(m.fileModel.FilePreview.GetContent(), content)
+		return contains
+	}, DefaultTestTimeout, DefaultTestTick, msgAndArgs...)
+	if !contains {
+		pContent := ansi.Strip(m.fileModel.FilePreview.GetContent())
+		pContent = pContent[:min(len(pContent), 20)]
+		t.Logf("%s was not found in '%s'", content, pContent)
+	}
+}
+
+func TestAsyncPreviewPanelSync(t *testing.T) {
+	curTestDir := t.TempDir()
+
+	originalPreviewWidth := common.Config.FilePreviewWidth
+	common.Config.FilePreviewWidth = 0
+	t.Cleanup(func() {
+		common.Config.FilePreviewWidth = originalPreviewWidth
+	})
+
+	file1, content1 := filepath.Join(curTestDir, "file1.txt"), "File 1 content"
+	file2, content2 := filepath.Join(curTestDir, "file2.txt"), "File 2 content"
+	utils.SetupFilesWithData(t, []byte(content1), file1)
+	utils.SetupFilesWithData(t, []byte(content2), file2)
+
+	m := defaultTestModelWithFilePreview(curTestDir)
+	// we want a size bigger than default to allow more number of panels
+	p := NewTestTeaProgWithEventLoopWithWinSize(t, m, 4*DefaultTestModelWidth, 4*DefaultTestModelHeight)
+
+	eventuallyEnsurePreviewContent(t, m, content1, "file1 content should load initially")
+	pW := m.fileModel.FilePreview.GetContentWidth()
+
+	// Create two panels
+	splitPanelAsync(p)
+	splitPanelAsync(p)
+	eventuallyEnsurePreviewContent(t, m, content1, "file1 content should reload after new panel")
+
+	assert.NotEqual(t, pW, m.fileModel.FilePreview.GetContentWidth(),
+		"width should change on new panel creation")
+
+	p.Send(tea.KeyPressMsg{Code: tea.KeyDown})
+	t.Logf("Current element : %s", m.getFocusedFilePanel().GetFocusedItem().Location)
+	eventuallyEnsurePreviewContent(t, m, content2, "content should update to file2")
+
+	p.SendKey(common.Hotkeys.CloseFilePanel[0])
+	eventuallyEnsurePreviewContent(t, m, content1, "content should update to file1 after closing panel")
+
+	// Upscale
+	p.Send(tea.WindowSizeMsg{Width: 8 * DefaultTestModelWidth,
+		Height: 8 * DefaultTestModelHeight})
+	eventuallyEnsurePreviewContent(t, m, content1, "content should update to file1 after resize")
+
+	// Downscale
+	p.Send(tea.WindowSizeMsg{Width: 6 * DefaultTestModelWidth,
+		Height: 6 * DefaultTestModelHeight})
+	eventuallyEnsurePreviewContent(t, m, content1, "content should update to file1 after resize")
+}
+
+func prepareLockUnlockTest(t *testing.T) *model {
+	curTestDir := t.TempDir()
+
+	originalPreviewWidth := common.Config.FilePreviewWidth
+	common.Config.FilePreviewWidth = 0
+	t.Cleanup(func() {
+		common.Config.FilePreviewWidth = originalPreviewWidth
+	})
+
+	file1, content1 := filepath.Join(curTestDir, "file1.txt"), "File 1 content"
+	file2, content2 := filepath.Join(curTestDir, "file2.txt"), "File 2 content"
+	utils.SetupFilesWithData(t, []byte(content1), file1)
+	utils.SetupFilesWithData(t, []byte(content2), file2)
+
+	m := defaultTestModelWithFilePreview(curTestDir)
+	processor := func(items []string) (processbar.Process, []string) {
+		return processbar.NewProcess("1", "test", processbar.OpCopy, 10), []string{}
+	}
+	finalizer := func(state processbar.ProcessState, reqId int) tea.Msg { return NewPasteOperationMsg(state, reqId) }
+	m.spfError = spferror.New(true,
+		"error",
+		"ERROR TEST", spferror.NewFileListError([]string{file1}, processor, finalizer))
+	m.spfError.Open()
+	return m
+}
+
+func TestUnlockErrorModalMutex(t *testing.T) {
+	t.Run("After handling error mutex must be unlocked", func(t *testing.T) {
+		m := prepareLockUnlockTest(t)
+		m.mutexErrorModal.Lock()
+		assert.False(t, m.mutexErrorModal.TryLock())
+		m.handleKeyInput(tea.KeyPressMsg{Code: tea.KeyEnter})
+		assert.True(t, m.mutexErrorModal.TryLock())
+	})
+
+	t.Run("Error modal must be handled on top", func(t *testing.T) {
+		m := prepareLockUnlockTest(t)
+		m.mutexErrorModal.Lock()
+		m.typingModal = typingModal{open: true}
+		pModel := prompt.DefaultModel(10, 10)
+		pModel.Open(false)
+		m.promptModal = pModel
+		zModel := zoxideui.GenerateModel(nil, 50, 80)
+		zModel.Open()
+		m.zoxideModal = zModel
+		m.notifyModel = notify.New(true, "test", "test", notify.RenameAction)
+		m.sidebarModel = sidebar.New()
+		m.sidebarModel.PinnedItemRename()
+		m.getFocusedFilePanel().SearchBar.Focus()
+		m.sidebarModel.SearchBarFocus()
+		m.sortModal.Open(sortmodel.SortByName)
+		m.helpMenu.Open()
+
+		assert.False(t, m.mutexErrorModal.TryLock())
+		m.handleKeyInput(tea.KeyPressMsg{Code: tea.KeyEnter})
+		assert.True(t, m.mutexErrorModal.TryLock())
+	})
+	t.Run("Error modal must be rendered on top", func(t *testing.T) {
+		m := prepareLockUnlockTest(t)
+		m.mutexErrorModal.Lock()
+		m.typingModal = typingModal{open: true}
+		pModel := prompt.DefaultModel(10, 10)
+		pModel.Open(false)
+		m.promptModal = pModel
+		zModel := zoxideui.GenerateModel(nil, 50, 80)
+		zModel.Open()
+		m.zoxideModal = zModel
+		m.notifyModel = notify.New(true, "test", "test", notify.RenameAction)
+		m.sidebarModel = sidebar.New()
+		m.sidebarModel.PinnedItemRename()
+		m.getFocusedFilePanel().SearchBar.Focus()
+		m.sidebarModel.SearchBarFocus()
+		m.sortModal.Open(sortmodel.SortByName)
+		m.helpMenu.Open()
+
+		actual := m.updateRenderForOverlay("test render")
+		assert.Contains(t, actual, "ERROR TEST")
+	})
 }

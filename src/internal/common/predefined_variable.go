@@ -1,17 +1,21 @@
 package common
 
 import (
+	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/yorukot/superfile/src/config/icon"
 )
 
 const (
+	// SidebarDividerLength defines the number of characters used for the horizontal divider in the sidebar.
+	SidebarDividerLength  = 20
 	WheelRunTime          = 5
 	DefaultCommandTimeout = 5000 * time.Millisecond
 	DateModifiedOption    = "Date Modified"
+	InvalidTypeString     = "InvalidType"
 )
 
 const (
@@ -39,23 +43,29 @@ const (
 
 var (
 	SideBarSuperfileTitle string
+	SideBarHomeDivider    string
 	SideBarPinnedDivider  string
 	SideBarDisksDivider   string
 	SideBarNoneText       string
 
 	ProcessBarNoneText string
+	ClipboardNoneText  string
 
 	FilePanelTopDirectoryIcon string
 	FilePanelNoneText         string
 
-	FilePreviewNoContentText           string
-	FilePreviewNoFileInfoText          string
-	FilePreviewUnsupportedFormatText   string
-	FilePreviewUnsupportedFileMode     string
-	FilePreviewDirectoryUnreadableText string
-	FilePreviewEmptyText               string
-	FilePreviewError                   string
-
+	FilePreviewNoFileInfoText               string
+	FilePreviewNoContentText                string
+	FilePreviewUnsupportedFormatText        string
+	FilePreviewUnsupportedFileMode          string
+	FilePreviewDirectoryUnreadableText      string
+	FilePreviewEmptyText                    string
+	FilePreviewError                        string
+	FilePreviewPanelClosedText              string
+	FilePreviewImagePreviewDisabledText     string
+	FilePreviewUnsupportedImageFormatsText  string
+	FilePreviewImageConversionErrorText     string
+	FilePreviewBatNotInstalledText          string
 	FilePreviewThumbnailGenerationErrorText string
 
 	CheckboxChecked        string
@@ -104,37 +114,63 @@ func LoadInitialPrerenderedVariables() {
 		lipgloss.NewStyle().Foreground(lipgloss.Color("#00FFEE")).Render(" ┃ ")
 }
 
+// This should be used only after InitIcon() has been called.
+func wrapFilePreviewErrorMsg(msg string) string {
+	return "\n--- " + icon.Error + icon.Space + msg + " ---"
+}
+
 // Dependecies - TODO We should programmatically guarantee these dependencies. And log error
 // if its not satisfied.
 // LoadThemeConfig() in style.go should be finished
 // loadConfigFile() in config_types.go should be finished
 // InitIcon() in config package in function.go should be finished
+// LoadPrerenderedVariables populates global UI component variables with their styled versions.
+// This should be called after theme and icons are initialized.
 func LoadPrerenderedVariables() {
+	divider := " " + strings.Repeat("─", SidebarDividerLength)
 	SideBarSuperfileTitle = SidebarTitleStyle.Render(" " + icon.SuperfileIcon + icon.Space + "superfile")
-
-	SideBarPinnedDivider = SidebarTitleStyle.Render(icon.Pinned+icon.Space+"Pinned") +
-		SidebarDividerStyle.Render(" ───────────")
-
-	SideBarDisksDivider = SidebarTitleStyle.Render(icon.Disk+icon.Space+"Disks") +
-		SidebarDividerStyle.Render(" ────────────")
+	SideBarHomeDivider = SidebarTitleStyle.Render(icon.Home+icon.Space+"Home") + SidebarDividerStyle.Render(divider)
+	SideBarPinnedDivider = SidebarTitleStyle.Render(
+		icon.Pinned+icon.Space+"Pinned",
+	) + SidebarDividerStyle.Render(
+		divider,
+	)
+	SideBarDisksDivider = SidebarTitleStyle.Render(icon.Disk+icon.Space+"Disks") + SidebarDividerStyle.Render(divider)
 
 	SideBarNoneText = SidebarStyle.Render(" " + icon.Error + icon.Space + "None")
 
 	ProcessBarNoneText = icon.Error + icon.Space + "No processes running"
+	ClipboardNoneText = " " + icon.Error + icon.Space + " No content in clipboard"
 
 	FilePanelTopDirectoryIcon = FilePanelTopDirectoryIconStyle.Render(" " + icon.Directory + icon.Space)
 	FilePanelNoneText = FilePanelStyle.Render(" " + icon.Error + icon.Space + "No such file or directory")
 
-	// TODO : This "---" being appended before and after should be done via a function
-	FilePreviewNoContentText = "\n--- " + icon.Error + icon.Space + "No content to preview" + icon.Space + "---"
-	FilePreviewNoFileInfoText = "\n--- " + icon.Error + icon.Space + "Could not get file info" + icon.Space + "---"
-	FilePreviewUnsupportedFormatText = "\n--- " + icon.Error + icon.Space + "Unsupported formats" + icon.Space + "---"
-	FilePreviewUnsupportedFileMode = "\n--- " + icon.Error + icon.Space + "Unsupported File Mode" + icon.Space + "---"
-	FilePreviewDirectoryUnreadableText = "\n--- " + icon.Error + icon.Space + "Cannot read directory" + icon.Space + "---"
-	FilePreviewError = "\n--- " + icon.Error + icon.Space + "Error" + icon.Space + "---"
-	FilePreviewEmptyText = "\n--- Empty ---"
-
-	FilePreviewThumbnailGenerationErrorText = "\n--- " + icon.Error + icon.Space + "Thumbnail generation failed" + icon.Space + "---"
+	FilePreviewNoContentText = wrapFilePreviewErrorMsg(
+		"No content to preview")
+	FilePreviewNoFileInfoText = wrapFilePreviewErrorMsg(
+		"Could not get file info")
+	FilePreviewUnsupportedFormatText = wrapFilePreviewErrorMsg(
+		"Unsupported formats")
+	FilePreviewUnsupportedFileMode = wrapFilePreviewErrorMsg(
+		"Unsupported File Mode")
+	FilePreviewDirectoryUnreadableText = wrapFilePreviewErrorMsg(
+		"Cannot read directory")
+	FilePreviewError = wrapFilePreviewErrorMsg(
+		"Error")
+	FilePreviewEmptyText = wrapFilePreviewErrorMsg(
+		"Empty")
+	FilePreviewPanelClosedText = wrapFilePreviewErrorMsg(
+		"Preview panel is closed")
+	FilePreviewImagePreviewDisabledText = wrapFilePreviewErrorMsg(
+		"Image preview is disabled")
+	FilePreviewUnsupportedImageFormatsText = wrapFilePreviewErrorMsg(
+		"Unsupported image formats")
+	FilePreviewImageConversionErrorText = wrapFilePreviewErrorMsg(
+		"Error converting image to ANSI")
+	FilePreviewBatNotInstalledText = wrapFilePreviewErrorMsg(
+		"'bat' is not installed or not found")
+	FilePreviewThumbnailGenerationErrorText = wrapFilePreviewErrorMsg(
+		"Thumbnail generation failed")
 
 	CheckboxChecked = FilePanelSelectBoxStyle.
 		Foreground(FilePanelBorderColor).
@@ -150,8 +186,8 @@ func LoadPrerenderedVariables() {
 		Render(icon.CheckboxEmpty + icon.Space)
 
 	ModalOkayInputText = MainStyle.AlignHorizontal(lipgloss.Center).AlignVertical(lipgloss.Center).Render(
-		ModalConfirm.Render(" (" + Hotkeys.Confirm[0] + ") Okay "))
-	ModalConfirmInputText = ModalConfirm.Render(" (" + Hotkeys.Confirm[0] + ") Confirm ")
+		ModalConfirm.Render(" (" + Hotkeys.ConfirmTyping[0] + ") Okay "))
+	ModalConfirmInputText = ModalConfirm.Render(" (" + Hotkeys.ConfirmTyping[0] + ") Confirm ")
 	ModalCancelInputText = ModalCancel.Render(" (" + Hotkeys.Quit[0] + ") Cancel ")
 	ModalInputSpacingText = lipgloss.NewStyle().Background(ModalBGColor).Render("           ")
 }

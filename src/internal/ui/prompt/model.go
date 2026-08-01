@@ -8,7 +8,7 @@ import (
 
 	"github.com/yorukot/superfile/src/internal/ui"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/yorukot/superfile/src/config/icon"
 	"github.com/yorukot/superfile/src/internal/common"
@@ -38,9 +38,6 @@ func GenerateModel(spfPromptHotkey string, shellPromptHotkey string, closeOnSucc
 }
 
 func (m *Model) HandleUpdate(msg tea.Msg, cwdLocation string) (common.ModelAction, tea.Cmd) {
-	slog.Debug("prompt.Model HandleUpdate()", "msg", msg,
-		"textInput", m.textInput.Value(),
-		"cursorBlink", m.textInput.Cursor.Blink)
 	var action common.ModelAction
 	action = common.NoAction{}
 	var cmd tea.Cmd
@@ -50,7 +47,7 @@ func (m *Model) HandleUpdate(msg tea.Msg, cwdLocation string) (common.ModelActio
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case slices.Contains(common.Hotkeys.ConfirmTyping, msg.String()):
 			action = m.handleConfirm(cwdLocation)
@@ -91,7 +88,7 @@ func (m *Model) handleConfirm(cwdLocation string) common.ModelAction {
 	return action
 }
 
-func (m *Model) handleNormalKeyInput(msg tea.KeyMsg) tea.Cmd {
+func (m *Model) handleNormalKeyInput(msg tea.KeyPressMsg) tea.Cmd {
 	var cmd tea.Cmd
 	switch {
 	case m.textInput.Value() == "" && msg.String() == m.spfPromptHotkey:
@@ -107,12 +104,16 @@ func (m *Model) handleNormalKeyInput(msg tea.KeyMsg) tea.Cmd {
 }
 
 // After action is performed, model will update the Model with results
-func (m *Model) HandleShellCommandResults(retCode int, _ string) {
+func (m *Model) HandleShellCommandResults(retCode int, output string) {
 	m.actionSuccess = retCode == 0
-	// Not allowing user to see output yet. This needs to be sanitized and
-	// need to be made sure that it doesn't breaks layout
-	// Hence we are ignoring output for now
 	m.resultMsg = fmt.Sprintf("Command exited with status %d", retCode)
+
+	output = strings.TrimSpace(common.MakePrintableWithEscCheck(output, false))
+	if output != "" {
+		m.resultMsg += ", Output:\n" + output
+	} else {
+		m.resultMsg += " (No output)"
+	}
 	m.CloseOnSuccessIfNeeded()
 }
 
@@ -212,7 +213,7 @@ func (m *Model) SetWidth(width int) {
 	m.width = width
 	// Excluding borders(2), SpacePadding(1), Prompt(2), and one extra character that is appended
 	// by textInput.View()
-	m.textInput.Width = width - promptInputPadding
+	m.textInput.SetWidth(width - promptInputPadding)
 }
 
 func (m *Model) SetMaxHeight(maxHeight int) {

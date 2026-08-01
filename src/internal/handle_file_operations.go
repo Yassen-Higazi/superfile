@@ -12,25 +12,64 @@ import (
 	"time"
 
 	variable "github.com/yorukot/superfile/src/config"
-	"github.com/yorukot/superfile/src/internal/ui/notify"
-	"github.com/yorukot/superfile/src/internal/ui/processbar"
-	"github.com/yorukot/superfile/src/internal/utils"
+	"github.com/yorukot/superfile/src/internal/trash"
+	"github.com/yorukot/superfile/src/internal/ui/filepanel"
+	"github.com/yorukot/superfile/src/internal/ui/spferror"
+	"github.com/yorukot/superfile/src/pkg/utils"
 
 	"github.com/yorukot/superfile/src/internal/common"
+	"github.com/yorukot/superfile/src/internal/ui/notify"
+	"github.com/yorukot/superfile/src/internal/ui/processbar"
+
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/atotto/clipboard"
-	tea "github.com/charmbracelet/bubbletea"
-
-	"github.com/yorukot/superfile/src/config/icon"
 )
+
+// Processes any standard (f.e. deletion) operation with a list of files
+func (m *model) runFileProcessor(processor processbar.FileListProcessor,
+	finalizer processbar.ProcessFinalizer,
+	items []string,
+	reqID int,
+) tea.Msg {
+	slog.Debug("Lock mutex for modal error window")
+	m.mutexErrorModal.Lock()
+	result, toDo := processor(items)
+	if result.State == processbar.Failed && len(toDo) > 0 {
+		// we unlock mutexErrorModal on dispatch SpfErrorModalUpdateMsg
+		errorModel := spferror.New(true,
+			"Error",
+			result.ErrorMsg, spferror.NewFileListError(toDo, processor, finalizer))
+		return NewSpfErrorModalMsg(errorModel, reqID)
+	}
+	slog.Debug("Unlock mutex for modal error window")
+	m.mutexErrorModal.Unlock()
+	return finalizer(result.State, reqID)
+}
+
+func markProcessDone(process processbar.Process, processBarModel *processbar.Model) {
+	process.DoneTime = time.Now()
+	err := processBarModel.SendUpdateProcessMsg(process, true)
+	if err != nil {
+		slog.Error("Failed to send final delete operation update", "error", err)
+	}
+}
+
+func formatFileError(filePath string, err error) string {
+	var e *os.LinkError
+	if errors.As(err, &e) {
+		return fmt.Sprintf("Deleting %s: \n%s", filePath, e.Err.Error())
+	}
+	return err.Error()
+}
 
 // Create a file in the currently focus file panel
 // TODO: Fix it. It doesn't creates a new file. It just opens a file model,
 // that allows you to create a file. Actual creation happens here - createItem() in handle_modal.go
 func (m *model) panelCreateNewFile() {
-	panel := &m.fileModel.filePanels[m.filePanelFocusIndex]
+	panel := m.getFocusedFilePanel()
 
-	m.typingModal.location = panel.location
+	m.typingModal.location = panel.Location
 	m.typingModal.open = true
 	m.typingModal.textInput = common.GenerateNewFileTextInput()
 	m.firstTextInput = true
@@ -39,15 +78,13 @@ func (m *model) panelCreateNewFile() {
 // TODO : This function does not needs the entire model. Only pass the panel object
 func (m *model) IsRenamingConflicting() bool {
 	// TODO : Replace this with m.getCurrentFilePanel() everywhere
-	panel := &m.fileModel.filePanels[m.filePanelFocusIndex]
-
-	if len(panel.element) == 0 {
+	panel := m.getFocusedFilePanel()
+	if panel.ElemCount() == 0 {
 		slog.Error("IsRenamingConflicting() being called on empty panel")
 		return false
 	}
-
-	oldPath := panel.element[panel.cursor].location
-	newPath := filepath.Join(panel.location, panel.rename.Value())
+	oldPath := panel.GetFocusedItem().Location
+	newPath := filepath.Join(panel.Location, panel.Rename.Value())
 
 	if oldPath == newPath {
 		return false
@@ -59,8 +96,7 @@ func (m *model) IsRenamingConflicting() bool {
 
 // TODO: Remove channel messaging and use tea.Cmd
 func (m *model) warnModalForRenaming() tea.Cmd {
-	reqID := m.ioReqCnt
-	m.ioReqCnt++
+	reqID := m.nextIoReqCnt()
 	slog.Debug("Submitting rename notify model request", "reqID", reqID)
 	res := func() tea.Msg {
 		notifyModel := notify.New(true,
@@ -76,13 +112,13 @@ func (m *model) warnModalForRenaming() tea.Cmd {
 // TODO: Fix this. It doesn't do any rename, just opens the rename text input
 // Actual rename happens at confirmRename() in handle_modal.go
 func (m *model) panelItemRename() {
-	panel := &m.fileModel.filePanels[m.filePanelFocusIndex]
-	if len(panel.element) == 0 {
+	panel := m.getFocusedFilePanel()
+	if panel.Empty() {
 		return
 	}
 
 	cursorPos := -1
-	nameRunes := []rune(panel.element[panel.cursor].name)
+	nameRunes := []rune(panel.GetFocusedItem().Name)
 	nameLen := len(nameRunes)
 	for i := nameLen - 1; i >= 0; i-- {
 		if nameRunes[i] == '.' {
@@ -90,96 +126,113 @@ func (m *model) panelItemRename() {
 			break
 		}
 	}
-	if cursorPos == -1 || cursorPos == 0 && nameLen > 0 || panel.element[panel.cursor].directory {
+	if cursorPos == -1 || cursorPos == 0 && nameLen > 0 || panel.GetFocusedItem().Directory {
 		cursorPos = nameLen
 	}
 
-	m.fileModel.renaming = true
-	panel.renaming = true
+	m.fileModel.Renaming = true
+	panel.Renaming = true
 	m.firstTextInput = true
-	panel.rename = common.GenerateRenameTextInput(
-		m.fileModel.width-common.InnerPadding,
+	// TODO: Don't re-create a new model on each rename. Don't create
+	// unnecessary gargage for collection. Reuse the existing model.
+	// Maintain its state, dimensions. Update its cursor and text when needed
+	panel.Rename = common.GenerateRenameTextInput(
+		m.fileModel.SinglePanelWidth-common.InnerPadding,
 		cursorPos,
-		panel.element[panel.cursor].name)
+		panel.GetFocusedItem().Name)
 }
 
 func (m *model) getDeleteCmd(permDelete bool) tea.Cmd {
 	panel := m.getFocusedFilePanel()
-	if len(panel.element) == 0 {
+	if panel.Empty() {
 		return nil
 	}
 
 	var items []string
-	if panel.panelMode == selectMode {
-		items = panel.selected
+	if panel.PanelMode == filepanel.SelectMode {
+		items = panel.GetSelectedLocationsSortedAsVisible()
 	} else {
-		items = []string{panel.getSelectedItem().location}
+		items = []string{panel.GetFocusedItem().Location}
 	}
 
-	useTrash := m.hasTrash && !isExternalDiskPath(panel.location) && !permDelete
+	useTrash := m.hasTrash && trash.Available(panel.Location) && !permDelete
 
-	reqID := m.ioReqCnt
-	m.ioReqCnt++
+	reqID := m.nextIoReqCnt()
 	slog.Debug("Submitting delete request", "id", reqID, "items cnt", len(items))
 	return func() tea.Msg {
-		state := deleteOperation(&m.processBarModel, items, useTrash)
-		return NewDeleteOperationMsg(state, reqID)
+		return m.deleteOperation(&m.processBarModel, items, useTrash, reqID)
 	}
 }
 
-func deleteOperation(processBarModel *processbar.Model, items []string, useTrash bool) processbar.ProcessState {
+func (m *model) deleteOperation(processBarModel *processbar.Model, items []string, useTrash bool, reqID int) tea.Msg {
 	if len(items) == 0 {
-		return processbar.Cancelled
+		return NewDeleteOperationMsg(processbar.Cancelled, reqID)
 	}
-	p, err := processBarModel.SendAddProcessMsg(icon.Delete+icon.Space+filepath.Base(items[0]), len(items), true)
+	p, err := processBarModel.SendAddProcessMsg(filepath.Base(items[0]), processbar.OpDelete, len(items), true)
 	if err != nil {
 		slog.Error("Cannot spawn a new process", "error", err)
-		return processbar.Failed
+		return NewDeleteOperationMsg(processbar.Failed, reqID)
 	}
+	finalizer := func(state processbar.ProcessState, reqID int) tea.Msg { return NewDeleteOperationMsg(state, reqID) }
+	processor := makeDeleteProcessor(p, processBarModel, useTrash)
+	msg := m.runFileProcessor(processor, finalizer, items, reqID)
+	return msg
+}
 
-	deleteFunc := os.RemoveAll
-	if useTrash {
-		deleteFunc = moveToTrash
-	}
-	for _, item := range items {
-		err = deleteFunc(item)
-		if err != nil {
-			p.State = processbar.Failed
-			slog.Error("Error in delete operation", "item", item, "useTrash", useTrash, "error", err)
-			break
+func makeDeleteProcessor(process processbar.Process,
+	processBarModel *processbar.Model,
+	useTrash bool) processbar.FileListProcessor {
+	processorFunction := func(items []string) (processbar.Process, []string) {
+		notProcessed := make([]string, 0)
+		if len(items) == 0 {
+			markProcessDone(process, processBarModel)
+			return process, notProcessed
 		}
-		p.Name = icon.Delete + icon.Space + filepath.Base(item)
-		p.Done++
-		processBarModel.TrySendingUpdateProcessMsg(p)
-	}
+		deleteFunc := os.RemoveAll
+		if useTrash {
+			deleteFunc = func(item string) error {
+				_, err := trash.Move(item)
+				return err
+			}
+		}
+		for i, item := range items {
+			err := deleteFunc(item)
+			if err != nil {
+				process.State = processbar.Failed
+				slog.Error("Error in delete operation", "item", item, "useTrash", useTrash, "error", err)
+				process.ErrorMsg = formatFileError(item, err)
+				notProcessed = items[i:]
+				break
+			}
+			process.CurrentFile = filepath.Base(item)
+			process.Done++
+			processBarModel.TrySendingUpdateProcessMsg(process)
+		}
 
-	if p.State != processbar.Failed {
-		p.State = processbar.Successful
+		if process.State != processbar.Failed {
+			process.State = processbar.Successful
+			markProcessDone(process, processBarModel)
+		}
+		return process, notProcessed
 	}
-	p.DoneTime = time.Now()
-	err = processBarModel.SendUpdateProcessMsg(p, true)
-	if err != nil {
-		slog.Error("Failed to send final delete operation update", "error", err)
-	}
-	return p.State
+	return processorFunction
 }
 
 func (m *model) getDeleteTriggerCmd(deletePermanent bool) tea.Cmd {
 	panel := m.getFocusedFilePanel()
-	if (panel.panelMode == selectMode && len(panel.selected) == 0) ||
-		(panel.panelMode == browserMode && len(panel.element) == 0) {
+	if (panel.PanelMode == filepanel.SelectMode && panel.SelectedCount() == 0) ||
+		(panel.PanelMode == filepanel.BrowserMode && panel.Empty()) {
 		return nil
 	}
 
-	reqID := m.ioReqCnt
-	m.ioReqCnt++
+	reqID := m.nextIoReqCnt()
 
 	return func() tea.Msg {
 		title := common.TrashWarnTitle
 		content := common.TrashWarnContent
 		action := notify.DeleteAction
 
-		if !m.hasTrash || isExternalDiskPath(panel.location) || deletePermanent {
+		if !m.hasTrash || !trash.Available(panel.Location) || deletePermanent {
 			title = common.PermanentDeleteWarnTitle
 			content = common.PermanentDeleteWarnContent
 			action = notify.PermanentDeleteAction
@@ -191,40 +244,38 @@ func (m *model) getDeleteTriggerCmd(deletePermanent bool) tea.Cmd {
 // Copy directory or file's path to superfile's clipboard
 // set cut to true/false accordingly
 func (m *model) copySingleItem(cut bool) {
-	panel := &m.fileModel.filePanels[m.filePanelFocusIndex]
-	m.copyItems.reset(cut)
-	if len(panel.element) == 0 {
+	panel := m.getFocusedFilePanel()
+	m.clipboard.Reset(cut)
+	if panel.Empty() {
 		return
 	}
 	slog.Debug("handle_file_operations.copySingleItem", "cut", cut,
-		"panel location", panel.element[panel.cursor].location)
-	m.copyItems.items = append(m.copyItems.items, panel.element[panel.cursor].location)
+		"panel location", panel.GetFocusedItem().Location)
+	m.clipboard.Add(panel.GetFocusedItem().Location)
 }
 
 // Copy all selected file or directory's paths to the clipboard
 func (m *model) copyMultipleItem(cut bool) {
-	panel := &m.fileModel.filePanels[m.filePanelFocusIndex]
-	m.copyItems.reset(cut)
-	if len(panel.selected) == 0 {
+	panel := m.getFocusedFilePanel()
+	m.clipboard.Reset(cut)
+	if panel.SelectedCount() == 0 {
 		return
 	}
+	items := panel.GetSelectedLocationsSortedAsVisible()
 	slog.Debug("handle_file_operations.copyMultipleItem", "cut", cut,
-		"panel selected files", panel.selected)
-	m.copyItems.items = panel.selected
+		"panel selected files", items)
+	m.clipboard.SetItems(items)
 }
 
 func (m *model) getPasteItemCmd() tea.Cmd {
-	copyItems := m.copyItems.items
-	cut := m.copyItems.cut
+	copyItems := m.clipboard.PruneInaccessibleItemsAndGet()
+	cut := m.clipboard.IsCut()
 	if len(copyItems) == 0 {
 		return nil
 	}
 
-	// TODO: Do it via m.getNewReqID()
-	// TODO: Have an IO Req Management, collecting info about pending IO Req too
-	reqID := m.ioReqCnt
-	m.ioReqCnt++
-	panelLocation := m.getFocusedFilePanel().location
+	reqID := m.nextIoReqCnt()
+	panelLocation := m.getFocusedFilePanel().Location
 
 	slog.Debug("Submitting pasteItems request", "id", reqID, "items cnt", len(copyItems), "dest", panelLocation)
 	return func() tea.Msg {
@@ -233,8 +284,7 @@ func (m *model) getPasteItemCmd() tea.Cmd {
 			return NewNotifyModalMsg(notify.New(true, "Invalid paste location", err.Error(), notify.NoAction),
 				reqID)
 		}
-		state := executePasteOperation(&m.processBarModel, panelLocation, copyItems, cut)
-		return NewPasteOperationMsg(state, reqID)
+		return m.executePasteOperation(&m.processBarModel, panelLocation, copyItems, cut, reqID)
 	}
 }
 
@@ -260,58 +310,79 @@ func validatePasteOperation(panelLocation string, copyItems []string, cut bool) 
 	return nil
 }
 
-// new func to check and return an error that will go in m.content
-// create a new error type
+func makePasteProcessor(process processbar.Process,
+	processBarModel *processbar.Model,
+	panelLocation string, cut bool,
+) processbar.FileListProcessor {
+	processorFunction := func(items []string) (processbar.Process, []string) {
+		notProcessed := make([]string, 0)
+		if len(items) == 0 {
+			markProcessDone(process, processBarModel)
+			return process, notProcessed
+		}
+		var err error
+		for i, filePath := range items {
+			errMessage := "cut item error"
+			if cut && !isExternalDiskPath(filePath) {
+				err = moveElement(filePath, filepath.Join(panelLocation, filepath.Base(filePath)))
+			} else {
+				// TODO : These error cases are hard to test. We have to somehow make the paste operations fail,
+				// which is time consuming and manual. We should test these with automated testcases
+				// UPD: use "chattr +i" for target catalog to fail past opeations
+				err = pasteDir(filePath, filepath.Join(panelLocation, filepath.Base(filePath)),
+					&process, cut, processBarModel)
+				if err != nil {
+					errMessage = "paste item error"
+				}
+			}
 
-// Paste all clipboard items
-func executePasteOperation(processBarModel *processbar.Model,
-	panelLocation string, copyItems []string, cut bool,
-) processbar.ProcessState {
-	slog.Debug("executePasteOperation", "items", copyItems, "cut", cut, "panel location", panelLocation)
+			process.CurrentFile = filepath.Base(filePath)
+			if err != nil {
+				process.State = processbar.Failed
+				slog.Error(errMessage, "error", err)
+				slog.Debug("model.pasteItem - paste failure", "error", err,
+					"current item", filePath, "errMessage", errMessage)
+				process.ErrorMsg = formatFileError(filePath, err)
+				notProcessed = items[i:]
+				break
+			}
+			processBarModel.TrySendingUpdateProcessMsg(process)
+		}
+		if process.State != processbar.Failed {
+			process.State = processbar.Successful
+			process.Done = process.Total
+			markProcessDone(process, processBarModel)
+		}
+		return process, notProcessed
+	}
+	return processorFunction
+}
+
+func (m *model) executePasteOperation(processBarModel *processbar.Model,
+	panelLocation string, items []string, cut bool, reqID int,
+) tea.Msg {
+	if len(items) == 0 {
+		return NewPasteOperationMsg(processbar.Cancelled, reqID)
+	}
+	var operation processbar.OperationType
+	if cut {
+		operation = processbar.OpCut
+	} else {
+		operation = processbar.OpCopy
+	}
 
 	p, err := processBarModel.SendAddProcessMsg(
-		icon.GetCopyOrCutIcon(cut)+icon.Space+filepath.Base(copyItems[0]),
-		getTotalFilesCnt(copyItems), true)
+		filepath.Base(items[0]),
+		operation,
+		getTotalFilesCnt(items), true)
 	if err != nil {
 		slog.Error("Cannot spawn a new process", "error", err)
-		return processbar.Failed
+		return NewPasteOperationMsg(processbar.Failed, reqID)
 	}
-
-	for _, filePath := range copyItems {
-		errMessage := "cut item error"
-		if cut && !isExternalDiskPath(filePath) {
-			err = moveElement(filePath, filepath.Join(panelLocation, filepath.Base(filePath)))
-		} else {
-			// TODO : These error cases are hard to test. We have to somehow make the paste operations fail,
-			// which is time consuming and manual. We should test these with automated testcases
-			err = pasteDir(filePath, filepath.Join(panelLocation, filepath.Base(filePath)), &p, cut, processBarModel)
-			if err != nil {
-				errMessage = "paste item error"
-			}
-		}
-
-		p.Name = icon.GetCopyOrCutIcon(cut) + icon.Space + filepath.Base(filePath)
-		if err != nil {
-			slog.Debug("model.pasteItem - paste failure", "error", err,
-				"current item", filePath, "errMessage", errMessage)
-			p.State = processbar.Failed
-			slog.Error(errMessage, "error", err)
-			break
-		}
-		processBarModel.TrySendingUpdateProcessMsg(p)
-	}
-
-	if p.State != processbar.Failed {
-		p.State = processbar.Successful
-		p.Done = p.Total
-	}
-	p.DoneTime = time.Now()
-	err = processBarModel.SendUpdateProcessMsg(p, true)
-	if err != nil {
-		slog.Error("Could not send final update for process Bar", "error", err)
-	}
-
-	return p.State
+	finalizer := func(state processbar.ProcessState, reqId int) tea.Msg { return NewPasteOperationMsg(state, reqId) }
+	processor := makePasteProcessor(p, processBarModel, panelLocation, cut)
+	msg := m.runFileProcessor(processor, finalizer, items, reqID)
+	return msg
 }
 
 func getTotalFilesCnt(copyItems []string) int {
@@ -343,19 +414,18 @@ func getTotalFilesCnt(copyItems []string) int {
 // TODO : err should be returned and properly handled by the caller
 func (m *model) getExtractFileCmd() tea.Cmd {
 	panel := m.getFocusedFilePanel()
-	if len(panel.element) == 0 {
+	if panel.Empty() {
 		return nil
 	}
 
-	item := panel.getSelectedItem().location
+	item := panel.GetFocusedItem().Location
 
 	ext := strings.ToLower(filepath.Ext(item))
 	if !common.IsExtensionExtractable(ext) {
 		slog.Error("Error unexpected file", "extension type", ext, "item", item, "error", errors.ErrUnsupported)
 		return nil
 	}
-	reqID := m.ioReqCnt
-	m.ioReqCnt++
+	reqID := m.nextIoReqCnt()
 
 	slog.Debug("Submitting Extract file request", "reqID", reqID, "item", item)
 
@@ -364,7 +434,7 @@ func (m *model) getExtractFileCmd() tea.Cmd {
 		outputDir, err := renameIfDuplicate(outputDir)
 		if err != nil {
 			slog.Error("Error while renaming for duplicates", "error", err)
-			return NewCompressOperationMsg(processbar.Failed, reqID)
+			return NewExtractOperationMsg(processbar.Failed, reqID)
 		}
 
 		err = os.MkdirAll(
@@ -373,50 +443,24 @@ func (m *model) getExtractFileCmd() tea.Cmd {
 		)
 		if err != nil {
 			slog.Error("Error while making directory for extracting files", "error", err)
-			return NewCompressOperationMsg(processbar.Failed, reqID)
+			return NewExtractOperationMsg(processbar.Failed, reqID)
 		}
 		err = extractCompressFile(item, outputDir, &m.processBarModel)
 		if err != nil {
 			slog.Error("Error extract file", "error", err)
-			return NewCompressOperationMsg(processbar.Failed, reqID)
+			return NewExtractOperationMsg(processbar.Failed, reqID)
 		}
-		return NewCompressOperationMsg(processbar.Successful, reqID)
+		return NewExtractOperationMsg(processbar.Successful, reqID)
 	}
 }
 
-func (m *model) getCompressSelectedFilesCmd() tea.Cmd {
-	panel := m.getFocusedFilePanel()
-
-	if len(panel.element) == 0 {
-		return nil
+func checkFileReadable(filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return err
 	}
-	var filesToCompress []string
-	var firstFile string
-
-	if len(panel.selected) == 0 {
-		firstFile = panel.element[panel.cursor].location
-		filesToCompress = append(filesToCompress, firstFile)
-	} else {
-		firstFile = panel.selected[0]
-		filesToCompress = panel.selected
-	}
-
-	reqID := m.ioReqCnt
-	m.ioReqCnt++
-
-	return func() tea.Msg {
-		zipName, err := getZipArchiveName(filepath.Base(firstFile))
-		if err != nil {
-			slog.Error("Error in getZipArchiveName", "error", err)
-			return NewCompressOperationMsg(processbar.Failed, reqID)
-		}
-		zipPath := filepath.Join(panel.location, zipName)
-		if err := zipSources(filesToCompress, zipPath, &m.processBarModel); err != nil {
-			slog.Error("Error in zipping files", "error", err)
-			return NewCompressOperationMsg(processbar.Failed, reqID)
-		}
-		return NewCompressOperationMsg(processbar.Successful, reqID)
-	}
+	defer file.Close()
+	return nil
 }
 
 func (m *model) chooserFileWriteAndQuit(path string) error {
@@ -431,15 +475,14 @@ func (m *model) chooserFileWriteAndQuit(path string) error {
 
 // Open file with default editor
 func (m *model) openFileWithEditor() tea.Cmd {
-	panel := &m.fileModel.filePanels[m.filePanelFocusIndex]
-
+	panel := m.getFocusedFilePanel()
 	// Check if panel is empty
-	if len(panel.element) == 0 {
+	if panel.Empty() {
 		return nil
 	}
 
 	if variable.ChooserFile != "" {
-		err := m.chooserFileWriteAndQuit(panel.element[panel.cursor].location)
+		err := m.chooserFileWriteAndQuit(panel.GetFocusedItem().Location)
 		if err == nil {
 			return nil
 		}
@@ -466,9 +509,9 @@ func (m *model) openFileWithEditor() tea.Cmd {
 	cmd := parts[0]
 
 	//nolint:gocritic // appendAssign: intentionally creating a new slice
-	args := append(parts[1:], panel.element[panel.cursor].location)
+	args := append(parts[1:], panel.GetFocusedItem().Location)
 
-	c := exec.Command(cmd, args...)
+	c := exec.Command(cmd, args...) //nolint:gosec // Editor command is intentionally user-configurable.
 
 	return tea.ExecProcess(c, func(err error) tea.Msg {
 		return editorFinishedMsg{err}
@@ -478,7 +521,7 @@ func (m *model) openFileWithEditor() tea.Cmd {
 // Open directory with default editor
 func (m *model) openDirectoryWithEditor() tea.Cmd {
 	if variable.ChooserFile != "" {
-		err := m.chooserFileWriteAndQuit(m.fileModel.filePanels[m.filePanelFocusIndex].location)
+		err := m.chooserFileWriteAndQuit(m.getFocusedFilePanel().Location)
 		if err == nil {
 			return nil
 		}
@@ -503,7 +546,7 @@ func (m *model) openDirectoryWithEditor() tea.Cmd {
 	parts := strings.Fields(editor)
 	cmd := parts[0]
 	//nolint:gocritic // appendAssign: intentionally creating a new slice
-	args := append(parts[1:], m.fileModel.filePanels[m.filePanelFocusIndex].location)
+	args := append(parts[1:], m.getFocusedFilePanel().Location)
 
 	c := exec.Command(cmd, args...)
 	return tea.ExecProcess(c, func(err error) tea.Msg {
@@ -514,21 +557,42 @@ func (m *model) openDirectoryWithEditor() tea.Cmd {
 // Copy file path
 // TODO: This is also an IO operations, do it via tea.Cmd
 func (m *model) copyPath() {
-	panel := &m.fileModel.filePanels[m.filePanelFocusIndex]
-
-	if len(panel.element) == 0 {
+	pathText := m.copyPathText()
+	if pathText == "" {
 		return
 	}
 
-	if err := clipboard.WriteAll(panel.element[panel.cursor].location); err != nil {
+	if err := m.writeClipboard(pathText); err != nil {
 		slog.Error("Error while copy path", "error", err)
 	}
 }
 
+func (m *model) copyPathText() string {
+	panel := m.getFocusedFilePanel()
+
+	if panel.Empty() {
+		return ""
+	}
+
+	if panel.PanelMode == filepanel.SelectMode && panel.SelectedCount() > 0 {
+		return strings.Join(panel.GetSelectedLocationsSortedAsVisible(), "\n")
+	}
+
+	return panel.GetFocusedItem().Location
+}
+
 // TODO: This is also an IO operations, do it via tea.Cmd
 func (m *model) copyPWD() {
-	panel := &m.fileModel.filePanels[m.filePanelFocusIndex]
-	if err := clipboard.WriteAll(panel.location); err != nil {
+	panel := m.getFocusedFilePanel()
+	if err := m.writeClipboard(panel.Location); err != nil {
 		slog.Error("Error while copy present working directory", "error", err)
 	}
+}
+
+func (m *model) writeClipboard(text string) error {
+	if m.clipboardWriter != nil {
+		return m.clipboardWriter(text)
+	}
+
+	return clipboard.WriteAll(text)
 }

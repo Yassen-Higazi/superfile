@@ -10,28 +10,28 @@ func wheelMainAction(msg string, m *model) {
 	slog.Debug("wheelMainAction called", "msg", msg, "focusPanel", m.focusPanel)
 	var action func()
 	switch msg {
-	case "wheel up":
+	case "wheelup":
 		switch m.focusPanel {
 		case sidebarFocus:
-			action = func() { m.sidebarModel.ListUp(m.mainPanelHeight) }
+			action = func() { m.sidebarModel.ListUp() }
 		case processBarFocus:
-			action = func() { m.processBarModel.ListUp(m.footerHeight) }
+			action = func() { m.processBarModel.ListUp() }
 		case metadataFocus:
 			action = func() { m.fileMetaData.ListUp() }
 		case nonePanelFocus:
-			action = func() { m.fileModel.filePanels[m.filePanelFocusIndex].listUp(m.mainPanelHeight) }
+			action = func() { m.getFocusedFilePanel().ListUp() }
 		}
 
-	case "wheel down":
+	case "wheeldown":
 		switch m.focusPanel {
 		case sidebarFocus:
-			action = func() { m.sidebarModel.ListDown(m.mainPanelHeight) }
+			action = func() { m.sidebarModel.ListDown() }
 		case processBarFocus:
-			action = func() { m.processBarModel.ListDown(m.footerHeight) }
+			action = func() { m.processBarModel.ListDown() }
 		case metadataFocus:
 			action = func() { m.fileMetaData.ListDown() }
 		case nonePanelFocus:
-			action = func() { m.fileModel.filePanels[m.filePanelFocusIndex].listDown(m.mainPanelHeight) }
+			action = func() { m.getFocusedFilePanel().ListDown() }
 		}
 	default:
 		slog.Error("Unexpected type of mouse action in wheelMainAction", "msg", msg)

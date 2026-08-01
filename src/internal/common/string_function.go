@@ -1,10 +1,11 @@
 package common
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
+	"image/color"
 	"io"
+	"log/slog"
 	"math"
 	"os"
 	"path/filepath"
@@ -12,21 +13,28 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/yorukot/superfile/src/pkg/utils"
 )
 
 // Size calculation constants
 const (
 	KilobyteSize      = 1000 // SI decimal unit
 	KibibyteSize      = 1024 // Binary unit
-	TabWidth          = 4    // Standard tab expansion width
 	DefaultBufferSize = 1024 // Default buffer size for string operations
 	NonBreakingSpace  = 0xa0 // Unicode non-breaking space
 	EscapeChar        = 0x1b // ANSI escape character
 	ASCIIMax          = 0x7f // Maximum ASCII character value
 )
 
+// TODO: This has a bug. Remove its usage. Remove all custom truncation
+// And audit and evaluate any problem
+// The logic truncates to maxChars - len(tails) first, then checks if truncation occurred. This means:
+// - "Hello" with maxChars=5 gets truncated to 2 chars (5-3=2), producing "He..."
+// - "Hello" with maxChars=6 gets truncated to 3 chars (6-3=3), producing "Hel..."
+// Both cases are wrong - "Hello" fits within 5 and 6 characters, so it shouldn't be truncated at all.
 func TruncateText(text string, maxChars int, tails string) string {
 	truncatedText := ansi.Truncate(text, maxChars-len(tails), "")
 	if text != truncatedText {
@@ -70,27 +78,38 @@ func TruncateMiddleText(text string, maxChars int, tails string) string {
 	return truncatedText
 }
 
-func PrettierName(name string, width int, isDir bool, isLink bool, isSelected bool, bgColor lipgloss.Color) string {
+func FilePanelItemRenderWithIcon(
+	name string,
+	width int,
+	isDir bool,
+	isLink bool,
+	isSelected bool,
+	bgColor color.Color,
+) string {
 	style := GetElementIcon(name, isDir, isLink, Config.Nerdfont)
-	if isSelected {
-		return StringColorRender(lipgloss.Color(style.Color), bgColor).
-			Background(bgColor).
-			Render(style.Icon+" ") +
-			FilePanelItemSelectedStyle.
-				Render(TruncateText(name, width, "..."))
+	iconData := style.Icon + " "
+	filenameWidth := width - ansi.StringWidth(iconData)
+	if filenameWidth <= 0 {
+		// This should never happen, unless there is extremely low size or programming bug
+		slog.Debug("Too low width for rendering file name", "width", width, "filenameWidth", filenameWidth)
+		return ""
 	}
 	return StringColorRender(lipgloss.Color(style.Color), bgColor).
-		Background(bgColor).
-		Render(style.Icon+" ") +
-		FilePanelStyle.Render(TruncateText(name, width, "..."))
+		Background(bgColor).Render(iconData) +
+		FilePanelItemRender(name, filenameWidth, isSelected, bgColor, lipgloss.Left)
 }
-
-func PrettierDirectoryPreviewName(name string, isDir bool, isLink bool, bgColor lipgloss.Color) string {
-	style := GetElementIcon(name, isDir, isLink, Config.Nerdfont)
-	return StringColorRender(lipgloss.Color(style.Color), bgColor).
-		Background(bgColor).
-		Render(style.Icon+" ") +
-		FilePanelStyle.Render(name)
+func FilePanelItemRender(data string,
+	width int,
+	isSelected bool,
+	bgColor color.Color,
+	alignment lipgloss.Position,
+) string {
+	outputData := ansi.Truncate(data, width, "...")
+	style := FilePanelStyle
+	if isSelected {
+		style = FilePanelItemSelectedStyle
+	}
+	return style.Background(bgColor).Width(width).Align(alignment).Render(outputData)
 }
 
 func ClipboardPrettierName(name string, width int, isDir bool, isLink bool, isSelected bool) string {
@@ -108,59 +127,93 @@ func ClipboardPrettierName(name string, width int, isDir bool, isLink bool, isSe
 }
 
 func FileNameWithoutExtension(fileName string) string {
+	if fileName == "" {
+		return ""
+	}
+	dir := filepath.Dir(fileName)
+	if dir == "." { // file name don't contains any directory
+		dir = ""
+	}
+	fileNameOnly := filepath.Base(fileName)
 	for {
-		pos := strings.LastIndexByte(fileName, '.')
+		pos := strings.LastIndexByte(fileNameOnly, '.')
 		if pos <= 0 {
 			break
 		}
-		fileName = fileName[:pos]
+		fileNameOnly = fileNameOnly[:pos]
 	}
-	return fileName
+	if dir == "" {
+		return fileNameOnly
+	}
+	return filepath.Join(dir, fileNameOnly)
+}
+
+func unitsDec() [7]string {
+	return [...]string{"B", "kB", "MB", "GB", "TB", "PB", "EB"}
+}
+
+func unitsBin() [7]string {
+	return [...]string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"}
+}
+
+func formatSizeInternal(size int64, power int, unitlist [7]string) string {
+	if size == 0 {
+		return "0 B"
+	}
+	unitIndex := int(math.Floor(math.Log(float64(size)) / math.Log(float64(power))))
+	if unitIndex == 0 {
+		return fmt.Sprintf("%d %s", size, unitlist[unitIndex])
+	}
+	adjustedSize := float64(size) / math.Pow(float64(power), float64(unitIndex))
+	return fmt.Sprintf("%.2f %s", adjustedSize, unitlist[unitIndex])
 }
 
 func FormatFileSize(size int64) string {
-	if size == 0 {
-		return "0B"
-	}
-
-	unitsDec := []string{"B", "kB", "MB", "GB", "TB", "PB", "EB"}
-	unitsBin := []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"}
-
-	// TODO : Remove duplication here
+	units := unitsBin()
+	power := KibibyteSize
 	if Config.FileSizeUseSI {
-		unitIndex := int(math.Floor(math.Log(float64(size)) / math.Log(KilobyteSize)))
-		adjustedSize := float64(size) / math.Pow(KilobyteSize, float64(unitIndex))
-		return fmt.Sprintf("%.2f %s", adjustedSize, unitsDec[unitIndex])
+		units = unitsDec()
+		power = KilobyteSize
 	}
-	unitIndex := int(math.Floor(math.Log(float64(size)) / math.Log(KibibyteSize)))
-	adjustedSize := float64(size) / math.Pow(KibibyteSize, float64(unitIndex))
-	return fmt.Sprintf("%.2f %s", adjustedSize, unitsBin[unitIndex])
+	return formatSizeInternal(size, power, units)
 }
 
-// Truncate line lengths and keep ANSI
-func CheckAndTruncateLineLengths(text string, maxLength int) string {
-	lines := strings.Split(text, "\n")
-	var result strings.Builder
-
-	for _, line := range lines {
-		// Replace tabs with spaces
-		expandedLine := strings.ReplaceAll(line, "\t", strings.Repeat(" ", TabWidth))
-		truncatedLine := ansi.Truncate(expandedLine, maxLength, "")
-		result.WriteString(truncatedLine + "\n")
+func GetHelpMenuHotkeyString(hotkeys []string) string {
+	var hotkey strings.Builder
+	for i, key := range hotkeys {
+		if key == "" {
+			continue
+		}
+		if i != 0 {
+			hotkey.WriteString(" | ")
+		}
+		if key == " " {
+			key = "space"
+		}
+		hotkey.WriteString(key)
 	}
-
-	finalResult := strings.TrimRight(result.String(), "\n")
-
-	return finalResult
+	return hotkey.String()
 }
 
-// Separated this out out for easy testing
-func IsBufferPrintable(buffer []byte) bool {
-	for _, b := range buffer {
-		// This will also handle b==0
-		if !unicode.IsPrint(rune(b)) && !unicode.IsSpace(rune(b)) {
+// Separated this out out for easy testing.
+// atEOF indicates whether buffer is a complete trailing slice of the input
+// (true EOF). Incomplete UTF-8 at the end is allowed when atEOF is false
+// (fixed-size reads may truncate a multi-byte rune), but rejected at EOF.
+func IsBufferPrintable(buffer []byte, atEOF bool) bool {
+	i := 0
+	for i < len(buffer) {
+		if !utf8.FullRune(buffer[i:]) {
+			return !atEOF
+		}
+		r, n := utf8.DecodeRune(buffer[i:])
+		if r == utf8.RuneError && n == 1 {
 			return false
 		}
+		// Allow UTF-8 BOM (U+FEFF); unicode.IsPrint/IsSpace reject it.
+		if r != '\uFEFF' && !unicode.IsPrint(r) && !unicode.IsSpace(r) {
+			return false
+		}
+		i += n
 	}
 	return true
 }
@@ -191,13 +244,23 @@ func IsTextFile(filename string) (bool, error) {
 	}
 	defer file.Close()
 
-	reader := bufio.NewReader(file)
 	buffer := make([]byte, DefaultBufferSize)
-	cnt, err := reader.Read(buffer)
-	if err != nil && !errors.Is(err, io.EOF) {
+	cnt, err := io.ReadFull(file, buffer)
+	switch {
+	case err == nil:
+		// Full buffer filled; peek one byte to distinguish exact-size EOF
+		// from a mid-file truncation of a multi-byte UTF-8 sequence.
+		var extra [1]byte
+		n, err2 := file.Read(extra[:])
+		if err2 != nil && !errors.Is(err2, io.EOF) {
+			return false, err2
+		}
+		return IsBufferPrintable(buffer, n == 0), nil
+	case errors.Is(err, io.EOF), errors.Is(err, io.ErrUnexpectedEOF):
+		return IsBufferPrintable(buffer[:cnt], true), nil
+	default:
 		return false, err
 	}
-	return IsBufferPrintable(buffer[:cnt]), nil
 }
 
 // Although some characters like `\x0b`(vertical tab) are printable,
@@ -210,6 +273,10 @@ func IsTextFile(filename string) (bool, error) {
 // This function should better not be broken into multiple functions
 func MakePrintableWithEscCheck(line string, allowEsc bool) string { //nolint: gocognit // See above
 	var sb strings.Builder
+	// where the current line starts in sb, so we can measure the column for tabs
+
+	lastSegmentStart := 0
+
 	for _, r := range line {
 		if r == utf8.RuneError {
 			continue
@@ -220,11 +287,11 @@ func MakePrintableWithEscCheck(line string, allowEsc bool) string { //nolint: go
 			sb.WriteRune(r)
 			continue
 		}
-		// It needs to be handled separately since considered a space,
-		// Since we are using ansi.StringWidth() for truncation, and \t is
-		// considered zero width
+		// \t is zero-width, expand it to the next tab stop based on current column
 		if r == '\t' {
-			sb.WriteString("    ")
+			newSegmentSize := ansi.StringWidth(sb.String()[lastSegmentStart:])
+			sb.WriteString(strings.Repeat(" ", utils.TabWidth-newSegmentSize%utils.TabWidth))
+			lastSegmentStart = sb.Len()
 			continue
 		}
 		if r == EscapeChar {
@@ -243,7 +310,11 @@ func MakePrintableWithEscCheck(line string, allowEsc bool) string { //nolint: go
 			sb.WriteRune(r)
 			continue
 		}
-		if unicode.IsGraphic(r) || r == rune('\n') {
+		if r == rune('\n') {
+			sb.WriteRune(r)
+			lastSegmentStart = sb.Len()
+		}
+		if unicode.IsGraphic(r) {
 			sb.WriteRune(r)
 		}
 	}

@@ -1,24 +1,30 @@
 {
-  "name": "ossified-orbit",
-  "type": "module",
-  "version": "0.0.1",
-  "scripts": {
-    "dev": "astro dev",
-    "start": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "astro": "astro"
-  },
-  "dependencies": {
-    "@astrojs/sitemap": "^3.4.1",
-    "@astrojs/starlight": "^0.35.0",
-    "@expressive-code/plugin-collapsible-sections": "^0.41.2",
-    "@expressive-code/plugin-line-numbers": "^0.41.2",
-    "@fontsource/ibm-plex-mono": "^5.2.5",
-    "@fontsource/ibm-plex-serif": "^5.2.5",
-    "astro": "^5.15.6",
-    "hast-util-to-html": "^9.0.5",
-    "sharp": "^0.34.1",
-    "starlight-giscus": "^0.8.0"
-  }
+	"name": "superfile-website",
+	"type": "module",
+	"scripts": {
+		"astro": "astro",
+		"build": "astro build && pagefind --site dist",
+		"dev": "astro dev",
+		"format": "prettier --write .",
+		"preview": "astro preview",
+		"start": "astro dev"
+	},
+	"dependencies": {
+		"@astrojs/mdx": "^5.0.4",
+		"@astrojs/sitemap": "^3.4.1",
+		"@lucide/astro": "^1.14.0",
+		"astro": "^6.1.10",
+		"gsap": "^3.15.0",
+		"remark-directive": "^4.0.0",
+		"sharp": "^0.35.0",
+		"unist-util-visit": "^5.1.0"
+	},
+	"devDependencies": {
+		"pagefind": "^1.5.2",
+		"prettier": "^3.8.3",
+		"prettier-plugin-astro": "^0.14.1",
+		"prettier-plugin-organize-imports": "^4.3.0",
+		"prettier-plugin-packagejson": "^3.0.2"
+	},
+	"packageManager": "pnpm@10.34.5"
 }

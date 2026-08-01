@@ -14,7 +14,7 @@ head:
 - Ported by: https://github.com/filipjanevski
 - Original Author: https://github.com/filipjanevski/
 
-![0x96f theme preview showing dark color scheme with blue accents](../../../assets/git-assets/theme/0x96f.png)
+![0x96f theme preview showing dark color scheme with blue accents](../../../assets/theme/0x96f.png)
 
 ## Ayu Dark
 
@@ -22,7 +22,7 @@ head:
 - Ported by: https://github.com/rustnomicon
 - Original Author: https://github.com/ayu-theme/
 
-![Ayu Dark theme preview showing warm dark color palette](../../../assets/git-assets/theme/ayu-dark.png)
+![Ayu Dark theme preview showing warm dark color palette](../../../assets/theme/ayu-dark.png)
 
 ## Blood
 
@@ -30,7 +30,7 @@ head:
 - Ported by: https://github.com/charlesrocket
 - Original Author: https://github.com/charlesrocket
 
-![Blood theme preview showing dark red color scheme](../../../assets/git-assets/theme/blood.png)
+![Blood theme preview showing dark red color scheme](../../../assets/theme/blood.png)
 
 ## Catppuccin Frappe
 
@@ -38,7 +38,7 @@ head:
 - Ported by: https://github.com/GV14982
 - Original Author: https://github.com/catppuccin
 
-![Catppuccin Frappe theme preview showing muted dark colors](../../../assets/git-assets/theme/catppuccin-frappe.png)
+![Catppuccin Frappe theme preview showing muted dark colors](../../../assets/theme/catppuccin-frappe.png)
 
 ## Catppuccin Latte
 
@@ -46,7 +46,7 @@ head:
 - Ported by: https://github.com/GV14982
 - Original Author: https://github.com/catppuccin
 
-![Catppuccin Latte theme preview showing light color scheme](../../../assets/git-assets/theme/catppuccin-latte.png)
+![Catppuccin Latte theme preview showing light color scheme](../../../assets/theme/catppuccin-latte.png)
 
 ## Catppuccin Macchiato
 
@@ -54,7 +54,7 @@ head:
 - Ported by: https://github.com/GV14982
 - Original Author: https://github.com/catppuccin
 
-![Catppuccin Macchiato theme preview showing medium dark colors](../../../assets/git-assets/theme/catppuccin-macchiato.png)
+![Catppuccin Macchiato theme preview showing medium dark colors](../../../assets/theme/catppuccin-macchiato.png)
 
 ## Catppuccin Mocha
 
@@ -62,7 +62,7 @@ head:
 - Ported by: https://github.com/AnshumanNeon
 - Original Author: https://github.com/catppuccin
 
-![Catppuccin theme preview showing pastel color palette](../../../assets/git-assets/theme/catppuccin.png)
+![Catppuccin theme preview showing pastel color palette](../../../assets/theme/catppuccin.png)
 
 ## Dracula
 
@@ -70,7 +70,7 @@ head:
 - Ported by: https://github.com/BeanieBarrow
 - Original Author: https://github.com/zenorocha
 
-![Dracula theme preview showing purple and pink dark color scheme](../../../assets/git-assets/theme/dracula.png)
+![Dracula theme preview showing purple and pink dark color scheme](../../../assets/theme/dracula.png)
 
 ## Everforest Dark Medium
 
@@ -78,7 +78,7 @@ head:
 - Ported by: https://github.com/dotintegral
 - Original Author: https://github.com/sainnhe/
 
-![Everforest Dark Medium theme preview showing nature-inspired green colors](../../../assets/git-assets/theme/everforest-dark-medium.png)
+![Everforest Dark Medium theme preview showing nature-inspired green colors](../../../assets/theme/everforest-dark-medium.png)
 
 ## Everforest Dark Hard
 
@@ -86,7 +86,7 @@ head:
 - Ported by: https://github.com/fzahner
 - Original Author: https://github.com/sainnhe/
 
-![Everforest Dark hard theme preview showing nature-inspired green colors](../../../assets/git-assets/theme/everforest-dark-hard.png)
+![Everforest Dark hard theme preview showing nature-inspired green colors](../../../assets/theme/everforest-dark-hard.png)
 
 ## Gruvbox
 
@@ -94,7 +94,7 @@ head:
 - Ported by: https://github.com/yorukot
 - Original Author: https://github.com/morhetz/
 
-![Gruvbox theme preview showing retro warm color palette](../../../assets/git-assets/theme/gruvbox.png)
+![Gruvbox theme preview showing retro warm color palette](../../../assets/theme/gruvbox.png)
 
 ## Gruvbox Dark Hard
 
@@ -102,7 +102,7 @@ head:
 - Ported by: https://github.com/frost-phoenix
 - Original Author: https://github.com/morhetz/
 
-![Gruvbox Dark Hard theme preview showing high contrast warm colors](../../../assets/git-assets/theme/gruvbox-dark-hard.png)
+![Gruvbox Dark Hard theme preview showing high contrast warm colors](../../../assets/theme/gruvbox-dark-hard.png)
 
 ## Hacks
 
@@ -110,7 +110,7 @@ head:
 - Ported by: https://github.com/charlesrocket
 - Original Author: https://github.com/charlesrocket
 
-![Hacks theme preview showing cyberpunk-inspired color scheme](../../../assets/git-assets/theme/hacks.png)
+![Hacks theme preview showing cyberpunk-inspired color scheme](../../../assets/theme/hacks.png)
 
 ## Kaolin
 
@@ -118,7 +118,7 @@ head:
 - Ported by: https://github.com/AnshumqanNeon
 - Original Author: https://github.com/ogdenwebb/
 
-![Kaolin theme preview showing brown and orange earth tones](../../../assets/git-assets/theme/kaolin.png)
+![Kaolin theme preview showing brown and orange earth tones](../../../assets/theme/kaolin.png)
 
 ## Monokai
 
@@ -126,7 +126,7 @@ head:
 - Ported by: https://github.com/CommandJoo
 - Original Author: https://github.com/monokai
 
-![Monokai theme preview showing classic dark syntax highlighting colors](../../../assets/git-assets/theme/monokai.png)
+![Monokai theme preview showing classic dark syntax highlighting colors](../../../assets/theme/monokai.png)
 
 ## Nord
 
@@ -134,7 +134,7 @@ head:
 - Ported by: https://github.com/ramses-eltany
 - Original Author: https://github.com/nordtheme
 
-![Nord theme preview showing cool blue and white arctic colors](../../../assets/git-assets/theme/nord.png)
+![Nord theme preview showing cool blue and white arctic colors](../../../assets/theme/nord.png)
 
 ## OneDark
 
@@ -142,7 +142,7 @@ head:
 - Ported by: https://github.com/CommandJoo
 - Original Author: https://github.com/one-dark
 
-![OneDark theme preview showing dark background with blue accents](../../../assets/git-assets/theme/onedark.png)
+![OneDark theme preview showing dark background with blue accents](../../../assets/theme/onedark.png)
 
 ## Poimandres
 
@@ -150,7 +150,7 @@ head:
 - Ported by: https://github.com/Myles-J
 - Original Author: https://github.com/drcmda/
 
-![Poimandres theme preview showing dark purple and teal color scheme](../../../assets/git-assets/theme/poimandres.png)
+![Poimandres theme preview showing dark purple and teal color scheme](../../../assets/theme/poimandres.png)
 
 ## Rosé Pine
 
@@ -158,7 +158,7 @@ head:
 - Ported by: https://github.com/pearcidar
 - Original Author: https://github.com/rose-pine
 
-![Rosé Pine theme preview showing soft pink and purple colors](../../../assets/git-assets/theme/rose-pine.png)
+![Rosé Pine theme preview showing soft pink and purple colors](../../../assets/theme/rose-pine.png)
 
 ## Sugarplum
 
@@ -166,7 +166,7 @@ head:
 - Ported by: https://github.com/lemonlime0x3C33
 - Original Author: https://github.com/lemonlime0x3C33
 
-![Sugarplum theme preview showing sweet purple and pink color palette](../../../assets/git-assets/theme/sugarplum.png)
+![Sugarplum theme preview showing sweet purple and pink color palette](../../../assets/theme/sugarplum.png)
 
 ## Tokyonight
 
@@ -174,4 +174,4 @@ head:
 - Ported by: https://github.com/pearcidar
 - Original Author: https://github.com/enkia/
 
-![Tokyonight theme preview showing dark blue nighttime color scheme](../../../assets/git-assets/theme/tokyonight.png)
+![Tokyonight theme preview showing dark blue nighttime color scheme](../../../assets/theme/tokyonight.png)

@@ -6,13 +6,16 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	zoxidelib "github.com/lazysegtree/go-zoxide"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/yorukot/superfile/src/pkg/utils"
+
+	"github.com/yorukot/superfile/src/internal/ui/filepanel"
+
 	"github.com/yorukot/superfile/src/internal/common"
-	"github.com/yorukot/superfile/src/internal/utils"
 )
 
 const DefaultTestTick = 10 * time.Millisecond
@@ -24,16 +27,34 @@ const DefaultTestModelHeight = 2 * common.MinimumHeight
 
 func defaultTestModel(dirs ...string) *model {
 	m := defaultModelConfig(false, false, false, dirs, nil)
-	return setModelParamsForTest(m)
+	return setModelParamsForTest(m, true)
 }
 
+// TODO: Change this to a better API. passing opts
+// WithZClient(), WithFooter()
 func defaultTestModelWithZClient(zClient *zoxidelib.Client, dirs ...string) *model {
 	m := defaultModelConfig(false, false, false, dirs, zClient)
-	return setModelParamsForTest(m)
+	return setModelParamsForTest(m, true)
 }
 
-func setModelParamsForTest(m *model) *model {
+func defaultTestModelWithFooterAndFilePreview(dirs ...string) *model {
+	m := defaultModelConfig(false, true, false, dirs, nil)
+	return setModelParamsForTest(m, false)
+}
+
+func defaultTestModelWithFilePreview(dirs ...string) *model {
+	m := defaultModelConfig(false, false, false, dirs, nil)
+	return setModelParamsForTest(m, false)
+}
+
+func setModelParamsForTest(m *model, disablePreview bool) *model {
 	m.disableMetadata = true
+	if disablePreview {
+		m.fileModel.FilePreview.Close()
+	}
+	// async size updates like preview panel content update
+	// will not be done. Note: This is only for direct usage of 'model'
+	// NewTestTeaProgWithEventLoop overwrites it.
 	TeaUpdate(m, tea.WindowSizeMsg{Width: DefaultTestModelWidth, Height: DefaultTestModelHeight})
 	return m
 }
@@ -45,9 +66,11 @@ func setupPanelModeAndSelection(t *testing.T, m *model, useSelectMode bool, item
 
 	if useSelectMode {
 		// Switch to select mode and set selected items
-		m.getFocusedFilePanel().changeFilePanelMode()
-		require.Equal(t, selectMode, panel.panelMode)
-		panel.selected = selectedItems
+		m.getFocusedFilePanel().ChangeFilePanelMode()
+		require.Equal(t, filepanel.SelectMode, panel.PanelMode)
+		for _, item := range selectedItems {
+			panel.SetSelected(item)
+		}
 	} else {
 		// Find the item in browser mode
 		setFilePanelSelectedItemByName(t, panel, itemName)
@@ -113,11 +136,11 @@ func performCopyOrCutOperation(t *testing.T, m *model, isCut bool) {
 // Helper function to verify clipboard state after copy/cut
 func verifyClipboardState(t *testing.T, m *model, isCut bool, useSelectMode bool, selectedItemsCount int) {
 	t.Helper()
-	assert.Equal(t, isCut, m.copyItems.cut, "Clipboard cut state should match operation")
+	assert.Equal(t, isCut, m.clipboard.IsCut(), "Clipboard cut state should match operation")
 	if useSelectMode {
-		assert.Len(t, m.copyItems.items, selectedItemsCount, "Clipboard should contain all selected items")
+		assert.Len(t, m.clipboard.GetItems(), selectedItemsCount, "Clipboard should contain all selected items")
 	} else {
-		assert.Len(t, m.copyItems.items, 1, "Clipboard should contain one item")
+		assert.Len(t, m.clipboard.GetItems(), 1, "Clipboard should contain one item")
 	}
 }
 
@@ -161,7 +184,7 @@ func verifyPreventedPasteResults(t *testing.T, m *model, originalPath string) {
 		verifyPathExists(t, originalPath, "Original file should still exist when paste is prevented")
 	}
 	// Clipboard should not be cleared when paste is prevented
-	assert.NotEmpty(t, m.copyItems.items, "Clipboard should not be cleared when paste is prevented")
+	assert.NotEmpty(t, m.clipboard.GetItems(), "Clipboard should not be cleared when paste is prevented")
 }
 
 // Helper function to verify successful paste results
@@ -182,27 +205,6 @@ func verifySuccessfulPasteResults(t *testing.T, targetDir string, expectedDestFi
 }
 
 // -------------- Other utilities
-
-// Helper function to find item index in panel by name
-func findItemIndexInPanel(panel *filePanel, itemName string) int {
-	for i, elem := range panel.element {
-		if elem.name == itemName {
-			return i
-		}
-	}
-	return -1
-}
-
-// Helper function to find item index in panel by name
-func findItemIndexInPanelByLocation(panel *filePanel, itemLocation string) int {
-	for i, elem := range panel.element {
-		if elem.location == itemLocation {
-			return i
-		}
-	}
-	return -1
-}
-
 // Helper function to navigate to target directory if different from start
 func navigateToTargetDir(t *testing.T, m *model, startDir, targetDir string) {
 	t.Helper()
@@ -221,16 +223,23 @@ func getOriginalPath(useSelectMode bool, itemName, startDir string) string {
 	return ""
 }
 
-func setFilePanelSelectedItemByLocation(t *testing.T, panel *filePanel, filePath string) {
+func setFilePanelSelectedItemByLocation(t *testing.T, panel *filepanel.Model, filePath string) {
 	t.Helper()
-	idx := findItemIndexInPanelByLocation(panel, filePath)
+	idx := panel.FindElementIndexByLocation(filePath)
 	require.NotEqual(t, -1, idx, "%s should be found in panel", filePath)
-	panel.cursor = idx
+	panel.SetCursorPosition(idx)
 }
 
-func setFilePanelSelectedItemByName(t *testing.T, panel *filePanel, fileName string) {
+func setFilePanelSelectedItemByName(t *testing.T, panel *filepanel.Model, fileName string) {
 	t.Helper()
-	idx := findItemIndexInPanel(panel, fileName)
+	idx := panel.FindElementIndexByName(fileName)
 	require.NotEqual(t, -1, idx, "%s should be found in panel", fileName)
-	panel.cursor = idx
+	panel.SetCursorPosition(idx)
+}
+
+func splitPanelAsync(p *TeaProg) {
+	p.SendKey(common.Hotkeys.OpenSPFPrompt[0])
+	p.SendKey("split")
+	p.Send(tea.KeyPressMsg{Code: tea.KeyEnter})
+	p.Send(tea.KeyPressMsg{Code: tea.KeyEsc})
 }

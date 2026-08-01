@@ -1,0 +1,37 @@
+---
+interface Props {
+	term: string;
+	lang: string;
+}
+
+const { term, lang } = Astro.props;
+
+function escapeAttribute(value: string) {
+	return value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
+const attributes: Record<string, string | boolean> = {
+	src: "https://giscus.app/client.js",
+	"data-repo": "yorukot/superfile",
+	"data-repo-id": "R_kgDOLil1MA",
+	"data-category": "Docs Comments",
+	"data-category-id": "DIC_kwDOLil1MM4CfbH7",
+	"data-mapping": "specific",
+	"data-term": term,
+	"data-strict": "0",
+	"data-reactions-enabled": "1",
+	"data-emit-metadata": "0",
+	"data-input-position": "top",
+	"data-theme": "catppuccin_mocha",
+	"data-lang": lang,
+	"data-loading": "lazy",
+	crossorigin: "anonymous",
+	async: true
+};
+
+const attributeString = Object.entries(attributes)
+	.map(([name, value]) => (value === true ? name : `${name}="${escapeAttribute(value)}"`))
+	.join(" ");
+---
+
+<Fragment set:html={`<script ${attributeString}></script>`} />

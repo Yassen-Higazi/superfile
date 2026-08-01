@@ -6,13 +6,13 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/yorukot/superfile/src/internal/utils"
+	"github.com/yorukot/superfile/src/pkg/utils"
 
 	"github.com/adrg/xdg"
 )
 
 const (
-	CurrentVersion = "v1.4.0"
+	CurrentVersion = "v1.6.0"
 	// Allowing pre-releases with non production version
 	// Set this to "" for production releases
 	PreReleaseSuffix = ""
@@ -54,8 +54,7 @@ var (
 	// Trash Directories
 	DarwinTrashDirectory = filepath.Join(HomeDir, ".Trash")
 
-	// These are used by github.com/rkoesters/xdg/trash package
-	// We need to make sure that these directories exist
+	// Linux home trash directory paths used for sidebar display and tests.
 	LinuxTrashDirectory      = filepath.Join(xdg.DataHome, "Trash")
 	LinuxTrashDirectoryFiles = filepath.Join(xdg.DataHome, "Trash", "files")
 	LinuxTrashDirectoryInfo  = filepath.Join(xdg.DataHome, "Trash", "info")

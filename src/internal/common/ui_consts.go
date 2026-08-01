@@ -14,7 +14,6 @@ const (
 
 	DefaultFilePanelWidth    = 10 // default width for file panels
 	FilePanelMax             = 10 // max number of file panels supported
-	MinWidthForRename        = 18 // minimal width for rename input to render
 	ResponsiveWidthThreshold = 95 // width breakpoint for layout behavior
 
 	HeightBreakA = 30 // responsive height tiers
@@ -22,12 +21,13 @@ const (
 	HeightBreakC = 40
 	HeightBreakD = 45
 
-	ReRenderChunkDivisor = 100 // divisor for re-render throttling
-
 	FilePanelWidthUnit    = 20                     // width unit used to calculate max file panels
 	DefaultPreviewTimeout = 500 * time.Millisecond // preview operation timeout
 
-	// File permissions
+	FileNameRatioMin = 25
+	FileNameRatioMax = 100
+
+	RequiredGradientColorCount = 2
 
 	// UI positioning
 	CenterDivisor = 2 // divisor for centering UI elements

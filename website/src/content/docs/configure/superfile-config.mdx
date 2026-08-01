@@ -6,7 +6,7 @@ head:
     content: superfile config | superfile
 ---
 
-import CodeBlock from '../../../components/code.astro';
+import CodeBlock from "../../../components/code.astro";
 
 You can edit your superfile config file with the following command:
 
@@ -15,7 +15,9 @@ $EDITOR config_path
 ```
 
 :::tip
+
 To see the path locations of your superfile files, use the command `spf pl`.
+
 :::
 
 ### Setting
@@ -26,15 +28,15 @@ To see the path locations of your superfile files, use the command `spf pl`.
 
 - ###### editor
 
-The editor your files will be opened with (Leave blank to use the EDITOR environment variable. If EDITOR environment variable is not set, it will default to `nano` for MacOS/Linux, and `notepad` for Windows.
+The editor your files will be opened with (Leave blank to use the EDITOR environment variable. If EDITOR environment variable is not set, it will default to `nano` for macOS/Linux, and `notepad` for Windows).
 
 - ###### dir_editor
 
-The editor your directories will be opened with (Leave blank to use defaults : `vi` - Linux, `open` - MacOS, `explorer` - Windows).
+The editor your directories will be opened with (Leave blank to use defaults : `vi` - Linux, `open` - macOS, `explorer` - Windows).
 
 - ###### auto_check_update
 
-`true`  => Checks whether updates are needed when you exit superfile (only checks once a day).
+`true` => Checks whether updates are needed when you exit superfile (only checks once a day).
 
 `false` => No checks performed.
 
@@ -46,7 +48,7 @@ The editor your directories will be opened with (Leave blank to use defaults : `
 
 After setting to `true`, you need to update your shell config file. Sample changes :
 
-##### MacOS/Linux (bash or fish)
+##### macOS/Linux (bash or fish)
 
 ###### Bash
 
@@ -105,10 +107,11 @@ Save, exit, and reload your profile.
 ```
 
 :::note
-You need to make sure powershell is allowed to execute script. If you get error like `running
-scripts is disabled on this system`. You need to allow it.
 
-Example command to enable - `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned` 
+You need to make sure powershell is allowed to execute script. If you get error like `running scripts is disabled on this system`. You need to allow it.
+
+Example command to enable - `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned`
+
 :::
 
 - ###### default_open_file_preview
@@ -128,7 +131,6 @@ Example command to enable - `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned`
 `true` => Shows additional footer info for file panel like panel mode and sort type.
 
 `false` => Does not show additional footer info for file panel
-
 
 - ###### file_size_use_si
 
@@ -152,6 +154,8 @@ File panel sorting type. Directories will always be displayed at the top.
 
 `3` => Type
 
+`4` => Natural
+
 - ###### sort_order_reversed
 
 File panel sorting order.
@@ -167,6 +171,14 @@ File panel sorting case sensitivity (if `true`, uppercase letters come before lo
 `true` => Case sensitive ("B" comes before "a")
 
 `false` => Case insensitive ("a" comes before "B")
+
+- ###### shell_close_on_success
+
+Controls whether the shell prompt closes automatically after a command succeeds.
+
+`true` => Close the shell after successful command execution
+
+`false` => Keep the shell open after successful command execution
 
 - ###### debug
 
@@ -184,18 +196,41 @@ Controls whether warnings about missing fields in the config file are displayed.
 
 `false` => Warnings will be shown for any missing fields in the config file
 
+- ###### page_scroll_size
+
+Number of lines to scroll when using PgUp/PgDown keys.
+
+`0` => Full page scroll (default behavior)
+
+`n` (where n > 0) => Scroll exactly n lines
+
+- ###### file_panel_extra_columns
+
+Count of extra columns in file panel in addition to file name.
+
+`0` => Extra columns feature is disabled `1` => Also show size column `2` => Also show modify date `3` => Also show permission column
+
+:::caution
+
+Even though the extra columns are enabled, they will be hidden if the size of the filepanel is small. Please either increase the size or adjust the file_panel_name_percent config if you don't see the columns.
+
+:::
+
+- ###### file_panel_name_percent
+
+Percentage of file panel width allocated to file names (25-100). Higher values give more space to names, less to extra columns.
+
 ### Style
 
 - ###### code_previewer
 
-`''` => Use the builtin syntax highlighting for code files with *chroma*.
-`'bat'` => Use syntax highlighting provided by the [`bat`](https://github.com/sharkdp/bat) command line tool.
+`''` => Use the builtin syntax highlighting for code files with _chroma_. `'bat'` => Use syntax highlighting provided by the [`bat`](https://github.com/sharkdp/bat) command line tool.
 
 - ###### nerdfont
 
 `true` => Use nerdfont for directories and file icons.
 
-`false` => Dont use nerdfont. If you don't have or don't want Nerdfont installed you can turn this off
+`false` => Don't use nerdfont. If you don't have or don't want Nerdfont installed you can turn this off
 
 - ###### show_select_icons
 
@@ -204,7 +239,9 @@ Controls whether warnings about missing fields in the config file are displayed.
 `false` => Don't show checkbox icons in select mode.
 
 :::note
+
 This setting is ignored unless `nerdfont = true`. Both `nerdfont` and `show_select_icons` must be `true` for checkbox icons to appear.
+
 :::
 
 - ###### transparent_background
@@ -222,8 +259,16 @@ This setting is an integer.
 `X` => The width of the file preview window is 1/`X` of the terminal width (minus the sidebar width). It is calculated as: (terminal width - sidebar width) / `X`
 
 :::caution
+
 `X` must be from 2 to 10.
+
 :::
+
+- ###### enable_file_preview_border
+
+`true` => Enable border around the file preview panel
+
+`false` => Disable border around the file preview panel
 
 - ###### sidebar_width
 
@@ -231,18 +276,30 @@ This setting is an integer.
 
 `0` => The sidebar will not display.
 
-`X` => The width of the sidebar.
+`X` => The width of the sidebar(excluding borders).
 
 :::caution
-`X` must be from 3 to 20.
+
+`X` must be from 5 to 20.
+
 :::
+
+- ###### sidebar_sections
+
+Order of sidebar sections.
+
+`["home", "pinned", "disks"]` => Default order.
+
+Only sections included in this list will be displayed. You can remove sections or change their order, for example: `["pinned", "home"]`.
 
 - ###### Border style
 
 Here are a few suggested styles, of course you can change them to your own:
 
 :::caution
-Make sure to add strings exactly one character wide. Use ' ' for borderless 
+
+Make sure to add strings exactly one character wide. Use ' ' for borderless
+
 :::
 
 ```toml
@@ -275,13 +332,46 @@ border_middle_right = "┤"
 #...
 ```
 
-- ###### open_with
+### Plugins
 
-Allows users to map file extensions to commands used to open them.
-The file path will be appended as the last argument.
+- ###### metadata
+
+Shows more detailed metadata for files and directories.
+
+`true` => Enable detailed metadata. Requires [`exiftool`](https://exiftool.org).
+
+`false` => Use the built-in metadata only.
+
+- ###### enable_md5_checksum
+
+Adds an MD5 checksum entry to metadata for regular files.
+
+`true` => Calculate and show MD5 checksums in the metadata panel.
+
+`false` => Do not calculate MD5 checksums.
 
 :::caution
-Must be at the very end of the file 
+
+Calculating checksums reads the selected file, so it may be slow for large files.
+
+:::
+
+- ###### zoxide_support
+
+Enables the zoxide navigation modal.
+
+`true` => Enable zoxide navigation. Requires [`zoxide`](https://github.com/ajeetdsouza/zoxide).
+
+`false` => Disable zoxide navigation.
+
+- ###### open_with
+
+Allows users to map file extensions to commands used to open them. The file path will be appended as the last argument.
+
+:::caution
+
+Must be at the very end of the file
+
 :::
 
 ```toml
@@ -293,4 +383,3 @@ conf = "nvim"
 ### Default superfile config
 
 <CodeBlock file="src/superfile_config/config.toml" />
-

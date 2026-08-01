@@ -27,9 +27,13 @@
         packages = rec {
           superfile = pkgs.buildGoApplication {
             pname = "superfile";
-            version = "1.4.0";
+            version = "1.6.0";
             src = ./.;
             modules = ./gomod2nix.toml;
+
+            # Temporary workaround: zoxide-related tests fail in the Nix sandbox.
+            # CI still runs build, test, fmt, and lint outside the flake build.
+            doCheck = false;
 
             nativeCheckInputs = with pkgs; [
               zoxide

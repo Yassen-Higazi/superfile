@@ -1,0 +1,322 @@
+---
+import logoNight from "../assets/superfile-night.svg";
+import Search from "./Search.astro";
+
+interface Props {
+	/** Show mobile hamburger button (docs pages only) */
+	isDocs?: boolean;
+	/** True when currently on a zh-tw page */
+	isZhTw?: boolean;
+	/** Slug used to compute the lang-toggle target, empty for homepage */
+	baseSlug?: string;
+	labels?: {
+		videos?: string;
+		docs?: string;
+		github?: string;
+		discord?: string;
+		getStarted?: string;
+		homeAria?: string;
+	};
+}
+
+const { isDocs = false, isZhTw = false, baseSlug = "", labels = {} } = Astro.props;
+const localePrefix = isZhTw ? "/zh-tw" : "";
+const homeHref = isZhTw ? "/zh-tw/" : "/";
+const docsHref = `${localePrefix}/overview`;
+const installHref = `${localePrefix}/getting-started/installation`;
+const navLabels = {
+	videos: labels.videos ?? "Videos",
+	docs: labels.docs ?? "Docs",
+	github: labels.github ?? "GitHub",
+	discord: labels.discord ?? "Discord",
+	getStarted: labels.getStarted ?? "get started",
+	homeAria: labels.homeAria ?? "superfile home"
+};
+
+// Homepage: EN / -> /zh-tw/      ZH /zh-tw/ -> /
+// Pages:    EN /slug -> /zh-tw/slug   ZH /zh-tw/slug -> /slug
+const langHref = isZhTw ? `/${baseSlug}` : `/zh-tw/${baseSlug}`;
+const langLabel = isZhTw ? "English" : "繁體中文";
+---
+
+<header class="site-nav" id="site-nav">
+	<div class="site-nav-inner">
+		{
+			isDocs && (
+				<button class="site-nav-menu-btn" id="docs-menu-btn" aria-label="Toggle menu">
+					<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+						<rect x="1" y="3" width="14" height="1.5" rx="0.75" fill="currentColor" />
+						<rect x="1" y="7.25" width="14" height="1.5" rx="0.75" fill="currentColor" />
+						<rect x="1" y="11.5" width="14" height="1.5" rx="0.75" fill="currentColor" />
+					</svg>
+				</button>
+			)
+		}
+
+		<a href={homeHref} class="site-nav-logo" aria-label={navLabels.homeAria}>
+			<img src={logoNight.src} alt="superfile" width="120" height="24" />
+		</a>
+
+		<nav class="site-nav-links" role="navigation" aria-label="Main">
+			{
+				!isDocs && (
+					<a href="#videos" class="site-nav-link">
+						{navLabels.videos}
+					</a>
+				)
+			}
+			<a href={docsHref} class="site-nav-link">{navLabels.docs}</a>
+			<a href="https://github.com/yorukot/superfile" class="site-nav-link" target="_blank" rel="noopener noreferrer">{navLabels.github}</a>
+			<a href="https://discord.gg/YYtJ23Du7B" class="site-nav-link" target="_blank" rel="noopener noreferrer">{navLabels.discord}</a>
+		</nav>
+
+		<div class="site-nav-right">
+			<Search isZhTw={isZhTw} />
+
+			<a href="https://github.com/yorukot/superfile" class="site-nav-stars" id="nav-stars" target="_blank" rel="noopener noreferrer" aria-label="GitHub stars">
+				<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+					<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+				</svg>
+				<span id="star-count">—</span>
+			</a>
+
+			<a href={langHref} class="site-nav-lang">
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+					<circle cx="12" cy="12" r="10"></circle>
+					<path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+				</svg>
+				<span>{langLabel}</span>
+			</a>
+
+			{
+				!isDocs && (
+					<a href={installHref} class="site-nav-cta">
+						{navLabels.getStarted}
+					</a>
+				)
+			}
+		</div>
+	</div>
+</header>
+
+<style is:global>
+	/* ─── Site-wide navigation ──────────────────────────────────────────────────── */
+	.site-nav {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 3.5rem;
+		z-index: 100;
+		background: rgba(30, 30, 46, 0.85);
+		backdrop-filter: blur(16px) saturate(150%);
+		-webkit-backdrop-filter: blur(16px) saturate(150%);
+		border-bottom: 1px solid rgba(205, 214, 244, 0.07);
+	}
+
+	.site-nav-inner {
+		margin-inline: auto;
+		padding-inline: clamp(1rem, 4vw, 3rem);
+		height: 100%;
+		display: flex;
+		align-items: center;
+	}
+
+	/* ── Hamburger (docs mobile only) ─── */
+	.site-nav-menu-btn {
+		display: none;
+		align-items: center;
+		justify-content: center;
+		width: 2.125rem;
+		height: 2.125rem;
+		margin-right: 0.75rem;
+		flex-shrink: 0;
+		background: none;
+		border: 1px solid var(--border-1);
+		border-radius: 0.3125rem;
+		color: var(--text-3);
+		cursor: pointer;
+		transition:
+			color 0.15s,
+			border-color 0.15s;
+	}
+	.site-nav-menu-btn:hover {
+		color: var(--green);
+		border-color: var(--d-green-border, rgba(166, 227, 161, 0.35));
+	}
+
+	/* ── Logo ─── */
+	.site-nav-logo {
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		opacity: 0.9;
+		transition: opacity 0.15s;
+		text-decoration: none;
+	}
+	.site-nav-logo:hover {
+		opacity: 1;
+	}
+	.site-nav-logo img {
+		height: 1.25rem;
+		width: auto;
+		display: block;
+	}
+
+	/* ── Center links ─── */
+	.site-nav-links {
+		display: flex;
+		align-items: center;
+		gap: 0.125rem;
+		flex: 1;
+		margin-left: 1.5rem;
+	}
+
+	.site-nav-link {
+		padding: 0.3125rem 0.625rem;
+		font-size: 0.8125rem;
+		color: var(--text-3);
+		border-radius: 0.3125rem;
+		text-decoration: none;
+		transition:
+			color 0.15s,
+			background 0.15s;
+	}
+	.site-nav-link:hover {
+		color: var(--text);
+		background: rgba(205, 214, 244, 0.05);
+	}
+
+	/* ── Right cluster ─── */
+	.site-nav-right {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex-shrink: 0;
+	}
+
+	/* Stars badge */
+	.site-nav-stars {
+		display: flex;
+		align-items: center;
+		gap: 0.3125rem;
+		padding: 0.25rem 0.625rem;
+		font-size: 0.75rem;
+		color: var(--amber);
+		border: 1px solid rgba(249, 226, 175, 0.2);
+		border-radius: 999px;
+		text-decoration: none;
+		transition:
+			border-color 0.15s,
+			background 0.15s;
+	}
+	.site-nav-stars:hover {
+		border-color: var(--amber);
+		background: var(--amber-dim);
+	}
+
+	/* Language toggle */
+	.site-nav-lang {
+		display: flex;
+		align-items: center;
+		gap: 0.3125rem;
+		padding: 0.25rem 0.625rem;
+		font-size: 0.78rem;
+		color: var(--text-3);
+		border: 1px solid var(--border-1);
+		border-radius: 0.3125rem;
+		text-decoration: none;
+		transition:
+			color 0.15s,
+			border-color 0.15s,
+			background 0.15s;
+	}
+	.site-nav-lang:hover {
+		color: var(--green);
+		border-color: rgba(166, 227, 161, 0.35);
+		background: rgba(166, 227, 161, 0.06);
+	}
+
+	/* Get started CTA */
+	.site-nav-cta {
+		padding: 0.375rem 0.875rem;
+		font-size: 0.8125rem;
+		font-weight: 500;
+		color: #11111b;
+		background: var(--green);
+		border-radius: 0.3125rem;
+		text-decoration: none;
+		transition:
+			background 0.15s,
+			box-shadow 0.15s;
+	}
+	.site-nav-cta:hover {
+		background: #b5e8b0;
+		box-shadow: 0 0 1rem rgba(166, 227, 161, 0.4);
+	}
+
+	/* ── Responsive ─── */
+	@media (max-width: 53.75rem) {
+		.site-nav-menu-btn {
+			display: flex;
+		}
+	}
+
+	@media (max-width: 40rem) {
+		.site-nav-links {
+			display: none;
+		}
+		.site-nav-stars {
+			display: none;
+		}
+	}
+
+	@media (max-width: 30rem) {
+		.site-nav-lang span {
+			display: none;
+		}
+	}
+</style>
+
+<script>
+	// ── GitHub stars (cookie-cached 5 min) ───────────────────────────────────
+	async function loadStars() {
+		try {
+			let count: number;
+			let tag: string;
+
+			const cookieEntry = document.cookie.split("; ").find(c => c.startsWith("spf_stars="));
+
+			if (cookieEntry) {
+				const val = JSON.parse(decodeURIComponent(cookieEntry.slice("spf_stars=".length)));
+				count = val.n;
+				tag = val.t ?? "";
+			} else {
+				const res = await fetch("https://api.github.com/repos/yorukot/superfile");
+				const data = await res.json();
+				count = data.stargazers_count;
+				tag = data.tag_name ?? data.default_branch ?? "";
+				document.cookie = `spf_stars=${encodeURIComponent(JSON.stringify({ n: count, t: tag }))}` + `; max-age=300; path=/; SameSite=Lax`;
+			}
+
+			const formatted = count >= 1000 ? `${(count / 1000).toFixed(1)}k` : String(count);
+
+			// Nav badge — present on every page
+			const starCount = document.getElementById("star-count");
+			if (starCount) starCount.textContent = formatted;
+
+			// Homepage-only elements (no-ops on docs pages)
+			document.querySelectorAll<HTMLElement>("#stats-stars").forEach(el => (el.textContent = formatted));
+
+			const community = document.getElementById("community-stars");
+			if (community) community.textContent = `★ ${formatted}+`;
+
+			const ver = document.getElementById("stats-version");
+			if (ver && tag) ver.textContent = tag;
+		} catch {
+			/* silent */
+		}
+	}
+	// Run on every page (initial load + SPA navigations)
+	document.addEventListener("astro:page-load", loadStars);
+</script>

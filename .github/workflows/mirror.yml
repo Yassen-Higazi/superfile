@@ -4,11 +4,15 @@ permissions:
 
 on: [push]  # Trigger on push to ANY branch
 
+concurrency:
+  group: mirror-codeberg
+  cancel-in-progress: false
+
 jobs:
   mirror:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       

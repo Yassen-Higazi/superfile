@@ -6,8 +6,10 @@ head:
     content: Implementation info | superfile
 ---
 
-# Implmentation info
-The purpose of this document is to provide some implementation details to the reader that are not so obvious from the code and not very straightforward to figure out. 
+# Implementation info
+
+The purpose of this document is to provide some implementation details to the reader that are not so obvious from the code and not very straightforward to figure out.
 
 ## How default configuration files are packaged with app
-We use golangs `embed.FS` and embed all files in `src/superfile_config/` into our spf binary. In `src/internal/config_function.go`, the function `LoadAllDefaultConfig()` reads these embedded files, and write them to disk / in memory configuratin variables.
+
+We use Go's `embed.FS` and embed all files in `src/superfile_config/` into our spf binary. In `src/internal/common/load_config.go`, the function `LoadAllDefaultConfig()` reads these embedded files, and writes them to disk / in memory configuration variables.

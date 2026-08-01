@@ -6,112 +6,80 @@ import (
 	"image"
 	"log/slog"
 	"os"
-	"strconv"
 	"strings"
 
-	"github.com/BourgeoisBear/rasterm"
+	"github.com/charmbracelet/x/ansi"
+	"github.com/charmbracelet/x/ansi/kitty"
 )
 
 // isKittyCapable checks if the terminal supports Kitty graphics protocol
 func isKittyCapable() bool {
-	isCapable := rasterm.IsKittyCapable()
+	termProgram := os.Getenv("TERM_PROGRAM")
+	term := os.Getenv("TERM")
 
-	// Additional detection for terminals that might not be detected by rasterm
-	if !isCapable {
-		termProgram := os.Getenv("TERM_PROGRAM")
-		term := os.Getenv("TERM")
+	// TODO: Replace this allowlist with a real Kitty graphics capability check.
+	// tmux masks the underlying terminal through TERM/TERM_PROGRAM.
+	knownTerminals := []string{
+		"ghostty",
+		"WezTerm",
+		"iTerm2",
+		"xterm-kitty",
+		"kitty",
+		"Konsole",
+		"WarpTerminal",
+	}
 
-		// List of known terminal identifiers that support Kitty protocol
-		knownTerminals := []string{
-			"ghostty",
-			"WezTerm",
-			"iTerm2",
-			"xterm-kitty",
-			"kitty",
-			"Konsole",
-			"WarpTerminal",
-		}
-
-		for _, knownTerm := range knownTerminals {
-			if strings.EqualFold(termProgram, knownTerm) || strings.EqualFold(term, knownTerm) {
-				isCapable = true
-				break
-			}
+	for _, knownTerm := range knownTerminals {
+		if strings.EqualFold(termProgram, knownTerm) || strings.EqualFold(term, knownTerm) {
+			return true
 		}
 	}
 
-	return isCapable
+	return false
 }
 
-// ClearKittyImages clears all Kitty protocol images from the terminal
-func ClearKittyImages() string {
-	if !isKittyCapable() {
-		return "" // No need to clear if terminal doesn't support Kitty protocol
-	}
-
-	return generateKittyClearCommands()
-}
-
-// ClearKittyImages clears all Kitty protocol images from the terminal
-func (p *ImagePreviewer) ClearKittyImages() string {
+// GetKittyClearRaw returns the raw APC command to clear all Kitty images.
+// This must be sent via tea.Raw(), not embedded in view content.
+func (p *ImagePreviewer) GetKittyClearRaw() string {
 	if !p.IsKittyCapable() {
-		return "" // No need to clear if terminal doesn't support Kitty protocol
+		return ""
 	}
-
-	return generateKittyClearCommands()
-}
-
-// generateKittyClearCommands generates the clearing commands for Kitty protocol
-func generateKittyClearCommands() string {
-	var buf bytes.Buffer
-
-	// Clear all images first
-	clearAllCmd := "\x1b_Ga=d\x1b\\"
-	buf.WriteString(clearAllCmd)
-
-	// Clear all placements
-	clearPlacementsCmd := "\x1b_Ga=d,p=1\x1b\\"
-	buf.WriteString(clearPlacementsCmd)
-
-	// Reset text formatting to default
-	buf.WriteString("\x1b[0m")
-
-	return buf.String()
+	return ansi.KittyGraphics(nil, "a=d")
 }
 
 // generatePlacementID generates a unique placement ID based on file path
-func generatePlacementID(path string) uint32 {
+func generatePlacementID(path string) int {
 	if len(path) == 0 {
-		return kittyHashSeed // Default fallback
+		return kittyHashSeed
 	}
 
 	hash := 0
 	for _, c := range path {
 		hash = hash*kittyHashPrime + int(c)
 	}
-	return uint32(hash&kittyMaxID) + //nolint:gosec // Hash is bounded by kittyMaxID mask before conversion
-		kittyNonZeroOffset
+	return (hash & kittyMaxID) + kittyNonZeroOffset
 }
 
-// renderWithKittyUsingTermCap renders an image using Kitty graphics protocol with terminal capabilities
+// KittyImageResult holds both the placeholder string for the cell buffer
+// and the raw transmission data to send directly to the terminal.
+type KittyImageResult struct {
+	// Placeholders is the Unicode placeholder string for embedding in the view.
+	// It contains kitty.Placeholder characters with diacritics.
+	Placeholders string
+	// RawTransmit is the Kitty graphics APC data to send via tea.Raw().
+	// It transmits the image data to the terminal out-of-band.
+	RawTransmit string
+}
+
+// renderWithKittyUsingTermCap renders an image using Kitty graphics protocol
+// with Unicode virtual placeholders (compatible with cell-based renderers).
 func (p *ImagePreviewer) renderWithKittyUsingTermCap(img image.Image, path string,
-	originalWidth, originalHeight, maxWidth, maxHeight int, sideAreaWidth int,
-) (string, error) {
-	// Validate dimensions
+	originalWidth, originalHeight, maxWidth, maxHeight int, _ int,
+) (*KittyImageResult, error) {
 	if maxWidth <= 0 || maxHeight <= 0 {
-		return "", fmt.Errorf("dimensions must be positive (maxWidth=%d, maxHeight=%d)", maxWidth, maxHeight)
+		return nil, fmt.Errorf("dimensions must be positive (maxWidth=%d, maxHeight=%d)", maxWidth, maxHeight)
 	}
 
-	var buf bytes.Buffer
-
-	// Add clearing commands
-	buf.WriteString(generateKittyClearCommands())
-
-	opts := rasterm.KittyImgOpts{
-		PlacementId: generatePlacementID(path),
-	}
-
-	// Get terminal cell size from ImagePreviewer's terminal capabilities
 	cellSize := p.terminalCap.GetTerminalCellSize()
 	pixelsPerColumn := cellSize.PixelsPerColumn
 	pixelsPerRow := cellSize.PixelsPerRow
@@ -121,28 +89,88 @@ func (p *ImagePreviewer) renderWithKittyUsingTermCap(img image.Image, path strin
 	imgRatio := float64(originalWidth) / float64(originalHeight)
 	termRatio := float64(maxWidth*pixelsPerColumn) / float64(maxHeight*pixelsPerRow)
 
-	slog.Debug("imgRatio", "imgRatio", imgRatio, "termRatio", termRatio)
-
+	var dstCols, dstRows int
 	if imgRatio > termRatio {
-		dstCols := maxWidth
-		dstRows := int(float64(dstCols*pixelsPerColumn) / imgRatio / float64(pixelsPerRow))
-		opts.DstCols = uint32(dstCols) //nolint:gosec // Terminal dimensions are bounded by maxWidth/maxHeight
-		opts.DstRows = uint32(dstRows) //nolint:gosec // Terminal dimensions are bounded by maxWidth/maxHeight
+		dstCols = maxWidth
+		dstRows = int(float64(dstCols*pixelsPerColumn) / imgRatio / float64(pixelsPerRow))
 	} else {
-		dstRows := maxHeight
-		dstCols := int(float64(dstRows*pixelsPerRow) * imgRatio / float64(pixelsPerColumn))
-		opts.DstRows = uint32(dstRows) //nolint:gosec // Terminal dimensions are bounded by maxWidth/maxHeight
-		opts.DstCols = uint32(dstCols) //nolint:gosec // Terminal dimensions are bounded by maxWidth/maxHeight
+		dstRows = maxHeight
+		dstCols = int(float64(dstRows*pixelsPerRow) * imgRatio / float64(pixelsPerColumn))
+	}
+	if dstCols <= 0 {
+		dstCols = 1
+	}
+	if dstRows <= 0 {
+		dstRows = 1
 	}
 
-	// Write image using Kitty protocol
-	if err := rasterm.KittyWriteImage(&buf, img, opts); err != nil {
-		return "", err
+	imgID := generatePlacementID(path)
+	imgArea := img.Bounds()
+
+	// Encode image data for transmission via tea.Raw()
+	var transmitBuf bytes.Buffer
+
+	// Delete previous image with this ID first
+	transmitBuf.WriteString(ansi.KittyGraphics(nil, fmt.Sprintf("a=d,d=i,i=%d", imgID)))
+
+	if err := kitty.EncodeGraphics(&transmitBuf, img, &kitty.Options{
+		ID:               imgID,
+		Action:           kitty.TransmitAndPut,
+		Transmission:     kitty.Direct,
+		Format:           kitty.RGBA,
+		ImageWidth:       imgArea.Dx(),
+		ImageHeight:      imgArea.Dy(),
+		Columns:          dstCols,
+		Rows:             dstRows,
+		VirtualPlacement: true,
+		Quite:            kittyQuietAll,
+		Chunk:            true,
+	}); err != nil {
+		return nil, fmt.Errorf("failed to encode kitty graphics: %w", err)
 	}
 
-	buf.WriteString("\x1b[1;" + strconv.Itoa(sideAreaWidth) + "H")
+	// Build Unicode placeholder cells for the view
+	placeholders := buildKittyPlaceholders(imgID, dstCols, dstRows)
 
-	return buf.String(), nil
+	return &KittyImageResult{
+		Placeholders: placeholders,
+		RawTransmit:  transmitBuf.String(),
+	}, nil
+}
+
+// buildKittyPlaceholders builds a string of Kitty Unicode placeholder characters
+// that the terminal replaces with the transmitted image.
+func buildKittyPlaceholders(imgID int, cols, rows int) string {
+	// Encode image ID as foreground color for the placeholder cells.
+	// The terminal uses this color to identify which image to display.
+	r, g, b := byte((imgID>>rgbShift16)&rgbMask), byte((imgID>>rgbShift8)&rgbMask), byte(imgID&rgbMask)
+
+	var fgSeq string
+	if r == 0 && g == 0 {
+		// Use 256-color mode for small IDs
+		fgSeq = fmt.Sprintf("\x1b[38;5;%dm", b)
+	} else {
+		fgSeq = fmt.Sprintf("\x1b[38;2;%d;%d;%dm", r, g, b)
+	}
+	resetSeq := "\x1b[39m"
+
+	var buf strings.Builder
+	for y := range rows {
+		if y > 0 {
+			buf.WriteByte('\n')
+		}
+		buf.WriteString(fgSeq)
+		// First cell per row gets placeholder + row diacritic + col(0) diacritic
+		buf.WriteRune(kitty.Placeholder)
+		buf.WriteRune(kitty.Diacritic(y))
+		buf.WriteRune(kitty.Diacritic(0))
+		// Subsequent cells just get the placeholder
+		for x := 1; x < cols; x++ {
+			buf.WriteRune(kitty.Placeholder)
+		}
+		buf.WriteString(resetSeq)
+	}
+	return buf.String()
 }
 
 // IsKittyCapable checks if the terminal supports Kitty graphics protocol
