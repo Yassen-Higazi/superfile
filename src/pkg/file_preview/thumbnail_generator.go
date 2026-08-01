@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/singleflight"
+
 	"github.com/yorukot/superfile/src/internal/common"
 	"github.com/yorukot/superfile/src/pkg/cache"
 )
@@ -48,7 +50,8 @@ func (g *VideoGenerator) generateThumbnail(inputPath string, outputPathWithoutEx
 	outputPath := outputPathWithoutExt + thumbOutputExt
 
 	// ffmpeg -v warning -t 60 -hwaccel auto -an -sn -dn -skip_frame nokey -i input.mkv -vf scale='min(1024,iw)':'min(720,ih)':force_original_aspect_ratio=decrease:flags=fast_bilinear -vf "thumbnail" -frames:v 1 -y thumb.jpg
-	ffmpeg := exec.CommandContext(ctx, "ffmpeg",
+	ffmpeg := exec.CommandContext(
+		ctx, "ffmpeg",
 		"-v", "warning", // set log level to warning
 		"-an",       // disable Audio stream
 		"-sn",       // disable Subtitle stream
@@ -96,7 +99,8 @@ func (g *pdfGenerator) generateThumbnail(inputPath string, outputPathWithoutExt 
 	defer cancel()
 
 	// pdftoppm -singlefile -png prefixFilename
-	pdftoppm := exec.CommandContext(ctx, "pdftoppm",
+	pdftoppm := exec.CommandContext(
+		ctx, "pdftoppm",
 		"-singlefile",        // output only the first page as image
 		"-jpeg",              // Image extension
 		inputPath,            // Set input file
@@ -138,7 +142,8 @@ func (g *psGenerator) generateThumbnail(inputPath string, outputPathWithoutExt s
 
 	// gs -dSAFER -dBATCH -dNOPAUSE -sPageList=1 -sDEVICE=jpeg -r150 -sOutputFile=output.jpg input.ps
 	outputParam := "-sOutputFile=" + outputPath
-	gs := exec.CommandContext(ctx, "gs",
+	gs := exec.CommandContext(
+		ctx, "gs",
 		"-dSAFER", "-dBATCH", "-dNOPAUSE", // Standard GS operators
 		"-sPageList=1",  // Output only the first page
 		"-sDEVICE=jpeg", // Output format
@@ -157,14 +162,20 @@ func (g *psGenerator) generateThumbnail(inputPath string, outputPathWithoutExt s
 }
 
 type ThumbnailGenerator struct {
-	// In-memory hot path: source path → thumbnail path
+	// memoryCache is session-only L1: source path → thumbnail file path.
+	// Empty on each new process; filled after a disk hit or fresh generation.
 	memoryCache map[string]string
-	// Persistent disk cache; nil when preview cache is disabled
+	// fileCache is persistent L2 on disk (nil when preview cache is disabled).
+	// Keyed by MakeKey(absPath, mtime, size, kind) so thumbs survive restarts
+	// when the source file has not changed.
 	fileCache *cache.FileCache
 	// Session temp dir used only when fileCache is nil
 	tempDirectory string
 	mu            sync.Mutex
-	generators    []thumbnailGeneratorInterface
+	// sf ensures only one generation runs per source path at a time;
+	// concurrent callers wait and share the result.
+	sf         singleflight.Group
+	generators []thumbnailGeneratorInterface
 }
 
 // NewThumbnailGenerator creates a thumbnail generator.
@@ -179,7 +190,7 @@ func NewThumbnailGenerator(cacheEnabled bool, cacheDir string, maxSizeMB int) (*
 		maxBytes := int64(maxSizeMB) * bytesPerMB
 		fc, err := cache.NewFileCache(cacheDir, maxBytes)
 		if err != nil {
-			slog.Warn("Could not create preview file cache, falling back to temp dir",
+			slog.Debug("Could not create preview file cache, falling back to temp dir",
 				"error", err)
 		} else {
 			fileCache = fc
@@ -236,31 +247,59 @@ func (g *ThumbnailGenerator) SupportsExt(ext string) bool {
 }
 
 func (g *ThumbnailGenerator) GetThumbnailOrGenerate(path string) (string, error) {
-	g.mu.Lock()
-	file, ok := g.memoryCache[path]
-	g.mu.Unlock()
-
-	if ok {
-		_, err := os.Stat(file)
-		if err == nil {
-			return file, nil
-		}
-
-		g.mu.Lock()
-		delete(g.memoryCache, path)
-		g.mu.Unlock()
+	// L1: same session, already resolved this source path.
+	if thumb, ok := g.cachedThumbnail(path); ok {
+		return thumb, nil
 	}
 
-	generatedThumbnailPath, err := g.generateThumbnail(path)
+	// Single-flight: concurrent requests for the same path share one generation.
+	v, err, _ := g.sf.Do(path, func() (any, error) {
+		// Re-check L1: another flight may have finished between miss and Do.
+		if thumb, ok := g.cachedThumbnail(path); ok {
+			return thumb, nil
+		}
+
+		// May hit L2 disk cache or run ffmpeg/pdftoppm/gs.
+		generatedThumbnailPath, err := g.generateThumbnail(path)
+		if err != nil {
+			return "", err
+		}
+
+		// Warm L1 for the rest of this session.
+		g.mu.Lock()
+		g.memoryCache[path] = generatedThumbnailPath
+		g.mu.Unlock()
+
+		return generatedThumbnailPath, nil
+	})
 	if err != nil {
 		return "", err
 	}
 
+	thumb, ok := v.(string)
+	if !ok {
+		return "", errors.New("unexpected thumbnail result type")
+	}
+	return thumb, nil
+}
+
+// cachedThumbnail checks L1 only (memoryCache). Cross-session hits go through
+func (g *ThumbnailGenerator) cachedThumbnail(path string) (string, bool) {
 	g.mu.Lock()
-	g.memoryCache[path] = generatedThumbnailPath
+	file, ok := g.memoryCache[path]
 	g.mu.Unlock()
 
-	return generatedThumbnailPath, nil
+	if !ok {
+		return "", false
+	}
+
+	if _, err := os.Stat(file); err != nil {
+		g.mu.Lock()
+		delete(g.memoryCache, path)
+		g.mu.Unlock()
+		return "", false
+	}
+	return file, true
 }
 
 func (g *ThumbnailGenerator) generateThumbnail(path string) (string, error) {
@@ -281,6 +320,8 @@ func (g *ThumbnailGenerator) generateThumbnail(path string) (string, error) {
 	return "", errors.New("unsupported file format")
 }
 
+// generateWithFileCache uses persistent L2: look up by content key, else generate
+// into the cache dir and Commit. Caller stores the returned path in memoryCache.
 func (g *ThumbnailGenerator) generateWithFileCache(path string, generator thumbnailGeneratorInterface) (string, error) {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
@@ -304,7 +345,7 @@ func (g *ThumbnailGenerator) generateWithFileCache(path string, generator thumbn
 
 	if err := g.fileCache.Commit(key, outputPath); err != nil {
 		// Still return the generated file even if index update fails
-		slog.Warn("Failed to commit thumbnail to cache", "error", err, "path", absPath)
+		slog.Debug("Failed to commit thumbnail to cache", "error", err, "path", absPath)
 	}
 	return outputPath, nil
 }
