@@ -40,105 +40,9 @@ func Run(content embed.FS) {
 		Version:     variable.CurrentVersion + variable.PreReleaseSuffix,
 		Description: "Pretty fancy and modern terminal file manager ",
 		ArgsUsage:   "[PATH]...",
-		Commands: []*cli.Command{
-			{
-				Name:    "path-list",
-				Aliases: []string{"pl"},
-				Usage:   "Print the path to the configuration and directory",
-				Action: func(_ context.Context, c *cli.Command) error {
-					if c.Bool("lastdir-file") {
-						fmt.Println(variable.LastDirFile)
-						return nil
-					}
-					fmt.Printf("%-*s %s\n",
-						common.HelpKeyColumnWidth,
-						lipgloss.NewStyle().Foreground(lipgloss.Color("#66b2ff")).Render("[Configuration file path]"),
-						variable.ConfigFile,
-					)
-					fmt.Printf("%-*s %s\n",
-						common.HelpKeyColumnWidth,
-						lipgloss.NewStyle().Foreground(lipgloss.Color("#ffcc66")).Render("[Hotkeys file path]"),
-						variable.HotkeysFile,
-					)
-					logStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#66ff66"))
-					configStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff9999"))
-					dataStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff66ff"))
-					cacheStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#99ccff"))
-					fmt.Printf("%-*s %s\n", common.HelpKeyColumnWidth,
-						logStyle.Render("[Log file path]"), variable.LogFile)
-					fmt.Printf("%-*s %s\n", common.HelpKeyColumnWidth,
-						configStyle.Render("[Configuration directory path]"), variable.SuperFileMainDir)
-					fmt.Printf("%-*s %s\n", common.HelpKeyColumnWidth,
-						dataStyle.Render("[Data directory path]"), variable.SuperFileDataDir)
-					fmt.Printf("%-*s %s\n", common.HelpKeyColumnWidth,
-						cacheStyle.Render("[Cache directory path]"), variable.SuperFileCacheDir)
-					fmt.Printf("%-*s %s\n", common.HelpKeyColumnWidth,
-						cacheStyle.Render("[Preview cache directory path]"), variable.SuperFilePreviewCacheDir)
-					return nil
-				},
-				Flags: []cli.Flag{
-					&cli.BoolFlag{
-						Name:    "lastdir-file",
-						Aliases: []string{"ld"},
-						Usage:   "Print path to lastdir file (Where last dir is written when cd_on_quit config is true)",
-						Value:   false,
-					},
-				},
-			},
-			{
-				Name:    "clear-cache",
-				Aliases: []string{"cc"},
-				Usage:   "Clear the persistent preview thumbnail cache",
-				Action: func(_ context.Context, _ *cli.Command) error {
-					return clearPreviewCache()
-				},
-			},
-		},
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:    "debug-info",
-				Aliases: []string{"di"},
-				Usage:   "Print debug information",
-				Value:   false,
-			},
-			&cli.BoolFlag{
-				Name:    "fix-hotkeys",
-				Aliases: []string{"fh"},
-				Usage:   "Adds any missing hotkeys to the hotkey config file",
-				Value:   false,
-			},
-			&cli.BoolFlag{
-				Name:    "fix-config-file",
-				Aliases: []string{"fch"},
-				Usage:   "Adds any missing fields to the config file",
-				Value:   false,
-			},
-			&cli.BoolFlag{
-				Name:    "print-last-dir",
-				Aliases: []string{"pld"},
-				Usage:   "Print the last dir to stdout on exit (to use for cd)",
-				Value:   false,
-			},
-			&cli.StringFlag{
-				Name:    "config-file",
-				Aliases: []string{"c"},
-				Usage:   "Specify the path to a different config file",
-				Value:   "", // Default to the blank string indicating non-usage of flag
-			},
-			&cli.StringFlag{
-				Name:    "hotkey-file",
-				Aliases: []string{"hf"},
-				Usage:   "Specify the path to a different hotkey file",
-				Value:   "", // Default to the blank string indicating non-usage of flag
-			},
-			&cli.StringFlag{
-				Name:    "chooser-file",
-				Aliases: []string{"cf"},
-				Usage:   "On trying to open any file, superfile will write to its path to this file, and exit",
-				Value:   "", // Default to the blank string indicating non-usage of flag
-			},
-		},
-		Action: spfAppAction,
+		Commands:    appCommands(),
+		Flags:       appFlags(),
+		Action:      spfAppAction,
 	}
 
 	err := app.Run(context.Background(), os.Args)
@@ -214,6 +118,112 @@ func InitConfigFile() {
 
 	if err := writeConfigFile(variable.HotkeysFile, common.HotkeysTomlString); err != nil {
 		utils.PrintlnAndExit("Error writing config file:", err)
+	}
+}
+
+func appCommands() []*cli.Command {
+	return []*cli.Command{
+		{
+			Name:    "path-list",
+			Aliases: []string{"pl"},
+			Usage:   "Print the path to the configuration and directory",
+			Action:  pathListAction,
+			Flags: []cli.Flag{
+				&cli.BoolFlag{
+					Name:    "lastdir-file",
+					Aliases: []string{"ld"},
+					Usage:   "Print path to lastdir file (Where last dir is written when cd_on_quit config is true)",
+					Value:   false,
+				},
+			},
+		},
+		{
+			Name:    "clear-cache",
+			Aliases: []string{"cc"},
+			Usage:   "Clear the persistent preview thumbnail cache",
+			Action: func(_ context.Context, _ *cli.Command) error {
+				return clearPreviewCache()
+			},
+		},
+	}
+}
+
+func pathListAction(_ context.Context, c *cli.Command) error {
+	if c.Bool("lastdir-file") {
+		fmt.Println(variable.LastDirFile)
+		return nil
+	}
+	fmt.Printf("%-*s %s\n",
+		common.HelpKeyColumnWidth,
+		lipgloss.NewStyle().Foreground(lipgloss.Color("#66b2ff")).Render("[Configuration file path]"),
+		variable.ConfigFile,
+	)
+	fmt.Printf("%-*s %s\n",
+		common.HelpKeyColumnWidth,
+		lipgloss.NewStyle().Foreground(lipgloss.Color("#ffcc66")).Render("[Hotkeys file path]"),
+		variable.HotkeysFile,
+	)
+	logStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#66ff66"))
+	configStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff9999"))
+	dataStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff66ff"))
+	cacheStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#99ccff"))
+	fmt.Printf("%-*s %s\n", common.HelpKeyColumnWidth,
+		logStyle.Render("[Log file path]"), variable.LogFile)
+	fmt.Printf("%-*s %s\n", common.HelpKeyColumnWidth,
+		configStyle.Render("[Configuration directory path]"), variable.SuperFileMainDir)
+	fmt.Printf("%-*s %s\n", common.HelpKeyColumnWidth,
+		dataStyle.Render("[Data directory path]"), variable.SuperFileDataDir)
+	fmt.Printf("%-*s %s\n", common.HelpKeyColumnWidth,
+		cacheStyle.Render("[Cache directory path]"), variable.SuperFileCacheDir)
+	fmt.Printf("%-*s %s\n", common.HelpKeyColumnWidth,
+		cacheStyle.Render("[Preview cache directory path]"), variable.SuperFilePreviewCacheDir)
+	return nil
+}
+
+func appFlags() []cli.Flag {
+	return []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "debug-info",
+			Aliases: []string{"di"},
+			Usage:   "Print debug information",
+			Value:   false,
+		},
+		&cli.BoolFlag{
+			Name:    "fix-hotkeys",
+			Aliases: []string{"fh"},
+			Usage:   "Adds any missing hotkeys to the hotkey config file",
+			Value:   false,
+		},
+		&cli.BoolFlag{
+			Name:    "fix-config-file",
+			Aliases: []string{"fch"},
+			Usage:   "Adds any missing fields to the config file",
+			Value:   false,
+		},
+		&cli.BoolFlag{
+			Name:    "print-last-dir",
+			Aliases: []string{"pld"},
+			Usage:   "Print the last dir to stdout on exit (to use for cd)",
+			Value:   false,
+		},
+		&cli.StringFlag{
+			Name:    "config-file",
+			Aliases: []string{"c"},
+			Usage:   "Specify the path to a different config file",
+			Value:   "",
+		},
+		&cli.StringFlag{
+			Name:    "hotkey-file",
+			Aliases: []string{"hf"},
+			Usage:   "Specify the path to a different hotkey file",
+			Value:   "",
+		},
+		&cli.StringFlag{
+			Name:    "chooser-file",
+			Aliases: []string{"cf"},
+			Usage:   "On trying to open any file, superfile will write to its path to this file, and exit",
+			Value:   "",
+		},
 	}
 }
 
