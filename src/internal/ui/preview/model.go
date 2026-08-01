@@ -5,6 +5,7 @@ import (
 
 	"github.com/yorukot/superfile/src/internal/common"
 
+	variable "github.com/yorukot/superfile/src/config"
 	filepreview "github.com/yorukot/superfile/src/pkg/file_preview"
 )
 
@@ -25,7 +26,11 @@ type Model struct {
 }
 
 func New() Model {
-	generator, err := filepreview.NewThumbnailGenerator()
+	generator, err := filepreview.NewThumbnailGenerator(
+		common.Config.PreviewCacheEnabled,
+		variable.SuperFilePreviewCacheDir,
+		common.Config.PreviewCacheMaxSizeMB,
+	)
 	if err != nil {
 		slog.Error("Could not NewThumbnailGenerator object", "error", err)
 	}

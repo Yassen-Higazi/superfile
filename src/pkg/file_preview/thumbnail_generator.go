@@ -13,10 +13,14 @@ import (
 	"time"
 
 	"github.com/yorukot/superfile/src/internal/common"
+	"github.com/yorukot/superfile/src/pkg/cache"
 )
+
+const thumbCacheVersion = "v1"
 
 type thumbnailGeneratorInterface interface {
 	supportsExt(ext string) bool
+	kind() string
 	generateThumbnail(inputPath string, outputPathWithoutExt string) (string, error)
 }
 
@@ -32,6 +36,10 @@ func newVideoGenerator() (*VideoGenerator, error) {
 
 func (g *VideoGenerator) supportsExt(ext string) bool {
 	return common.VideoExtensions[strings.ToLower(ext)]
+}
+
+func (g *VideoGenerator) kind() string {
+	return "thumb:video"
 }
 
 func (g *VideoGenerator) generateThumbnail(inputPath string, outputPathWithoutExt string) (string, error) {
@@ -78,6 +86,10 @@ func (g *pdfGenerator) supportsExt(ext string) bool {
 	return strings.ToLower(ext) == ".pdf"
 }
 
+func (g *pdfGenerator) kind() string {
+	return "thumb:pdf"
+}
+
 func (g *pdfGenerator) generateThumbnail(inputPath string, outputPathWithoutExt string) (string, error) {
 	outputPath := outputPathWithoutExt + thumbOutputExt
 	ctx, cancel := context.WithTimeout(context.Background(), thumbGenerationTimeout)
@@ -115,6 +127,10 @@ func (g *psGenerator) supportsExt(ext string) bool {
 	return extension == ".ps" || extension == ".eps"
 }
 
+func (g *psGenerator) kind() string {
+	return "thumb:ps"
+}
+
 func (g *psGenerator) generateThumbnail(inputPath string, outputPathWithoutExt string) (string, error) {
 	outputPath := outputPathWithoutExt + thumbOutputExt
 	ctx, cancel := context.WithTimeout(context.Background(), thumbGenerationTimeout)
@@ -141,19 +157,41 @@ func (g *psGenerator) generateThumbnail(inputPath string, outputPathWithoutExt s
 }
 
 type ThumbnailGenerator struct {
-	// This is a cache. Key -> Video file path, Value -> Thumbnail file path
-	// TODO: We can potentially make it persistent, preventing generation
-	// of thumbnail on every launch or superfile
-	tempFilesCache map[string]string
-	tempDirectory  string
-	mu             sync.Mutex
-	generators     []thumbnailGeneratorInterface
+	// In-memory hot path: source path → thumbnail path
+	memoryCache map[string]string
+	// Persistent disk cache; nil when preview cache is disabled
+	fileCache *cache.FileCache
+	// Session temp dir used only when fileCache is nil
+	tempDirectory string
+	mu            sync.Mutex
+	generators    []thumbnailGeneratorInterface
 }
 
-func NewThumbnailGenerator() (*ThumbnailGenerator, error) {
-	tmp, err := os.MkdirTemp("", "superfiles-*")
-	if err != nil {
-		return nil, err
+// NewThumbnailGenerator creates a thumbnail generator.
+// When cacheEnabled is true, thumbnails are stored under cacheDir with a
+// maxSizeMB disk limit. Otherwise a session-only temp directory is used.
+func NewThumbnailGenerator(cacheEnabled bool, cacheDir string, maxSizeMB int) (*ThumbnailGenerator, error) {
+	var fileCache *cache.FileCache
+	var tempDir string
+
+	if cacheEnabled {
+		const bytesPerMB = 1024 * 1024
+		maxBytes := int64(maxSizeMB) * bytesPerMB
+		fc, err := cache.NewFileCache(cacheDir, maxBytes)
+		if err != nil {
+			slog.Warn("Could not create preview file cache, falling back to temp dir",
+				"error", err)
+		} else {
+			fileCache = fc
+		}
+	}
+
+	if fileCache == nil {
+		tmp, err := os.MkdirTemp("", "superfiles-*")
+		if err != nil {
+			return nil, err
+		}
+		tempDir = tmp
 	}
 
 	generators := []thumbnailGeneratorInterface{}
@@ -179,13 +217,12 @@ func NewThumbnailGenerator() (*ThumbnailGenerator, error) {
 		generators = append(generators, video)
 	}
 
-	thumbnailGenerator := &ThumbnailGenerator{
-		tempFilesCache: make(map[string]string),
-		tempDirectory:  tmp,
-		generators:     generators,
-	}
-
-	return thumbnailGenerator, nil
+	return &ThumbnailGenerator{
+		memoryCache:   make(map[string]string),
+		fileCache:     fileCache,
+		tempDirectory: tempDir,
+		generators:    generators,
+	}, nil
 }
 
 func (g *ThumbnailGenerator) SupportsExt(ext string) bool {
@@ -200,7 +237,7 @@ func (g *ThumbnailGenerator) SupportsExt(ext string) bool {
 
 func (g *ThumbnailGenerator) GetThumbnailOrGenerate(path string) (string, error) {
 	g.mu.Lock()
-	file, ok := g.tempFilesCache[path]
+	file, ok := g.memoryCache[path]
 	g.mu.Unlock()
 
 	if ok {
@@ -210,7 +247,7 @@ func (g *ThumbnailGenerator) GetThumbnailOrGenerate(path string) (string, error)
 		}
 
 		g.mu.Lock()
-		delete(g.tempFilesCache, path)
+		delete(g.memoryCache, path)
 		g.mu.Unlock()
 	}
 
@@ -220,7 +257,7 @@ func (g *ThumbnailGenerator) GetThumbnailOrGenerate(path string) (string, error)
 	}
 
 	g.mu.Lock()
-	g.tempFilesCache[path] = generatedThumbnailPath
+	g.memoryCache[path] = generatedThumbnailPath
 	g.mu.Unlock()
 
 	return generatedThumbnailPath, nil
@@ -234,25 +271,72 @@ func (g *ThumbnailGenerator) generateThumbnail(path string) (string, error) {
 		if !generator.supportsExt(fileExt) {
 			continue
 		}
-		filename := filepath.Base(path)
-		baseName := filename[:len(filename)-len(fileExt)]
 
-		outputPathWithoutExt := filepath.Join(g.tempDirectory,
-			fmt.Sprintf("%s-%d", baseName, time.Now().UnixNano()))
-
-		outputPath, err := generator.generateThumbnail(path, outputPathWithoutExt)
-		if err != nil {
-			return "", err
+		if g.fileCache != nil {
+			return g.generateWithFileCache(path, generator)
 		}
-
-		return outputPath, nil
+		return g.generateWithTempDir(path, generator)
 	}
 
 	return "", errors.New("unsupported file format")
 }
 
+func (g *ThumbnailGenerator) generateWithFileCache(path string, generator thumbnailGeneratorInterface) (string, error) {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("resolve path: %w", err)
+	}
+	info, err := os.Stat(absPath)
+	if err != nil {
+		return "", err
+	}
+
+	key := cache.MakeKey(absPath, info, generator.kind(), thumbCacheVersion)
+	if cached, ok := g.fileCache.Get(key); ok {
+		return cached, nil
+	}
+
+	withoutExt := g.fileCache.Path(key)
+	outputPath, err := generator.generateThumbnail(absPath, withoutExt)
+	if err != nil {
+		return "", err
+	}
+
+	if err := g.fileCache.Commit(key, outputPath); err != nil {
+		// Still return the generated file even if index update fails
+		slog.Warn("Failed to commit thumbnail to cache", "error", err, "path", absPath)
+	}
+	return outputPath, nil
+}
+
+func (g *ThumbnailGenerator) generateWithTempDir(path string, generator thumbnailGeneratorInterface) (string, error) {
+	fileExt := filepath.Ext(path)
+	filename := filepath.Base(path)
+	baseName := filename[:len(filename)-len(fileExt)]
+
+	outputPathWithoutExt := filepath.Join(g.tempDirectory,
+		fmt.Sprintf("%s-%d", baseName, time.Now().UnixNano()))
+
+	return generator.generateThumbnail(path, outputPathWithoutExt)
+}
+
+// CleanUp releases session resources and flushes persistent cache metadata.
+// Blob files are kept on disk.
 func (g *ThumbnailGenerator) CleanUp() error {
-	return os.RemoveAll(g.tempDirectory)
+	g.mu.Lock()
+	g.memoryCache = make(map[string]string)
+	g.mu.Unlock()
+
+	if g.fileCache != nil {
+		if err := g.fileCache.Flush(); err != nil {
+			return err
+		}
+	}
+
+	if g.tempDirectory != "" {
+		return os.RemoveAll(g.tempDirectory)
+	}
+	return nil
 }
 
 func isPopplerInstalled() bool {

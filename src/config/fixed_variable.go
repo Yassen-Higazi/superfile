@@ -36,6 +36,9 @@ var (
 	SuperFileDataDir  = filepath.Join(xdg.DataHome, "superfile")
 	SuperFileStateDir = filepath.Join(xdg.StateHome, "superfile")
 
+	// Preview thumbnail cache (under SuperFileCacheDir)
+	SuperFilePreviewCacheDir = filepath.Join(SuperFileCacheDir, "preview")
+
 	// MainDir files
 	ThemeFolder = filepath.Join(SuperFileMainDir, "theme")
 

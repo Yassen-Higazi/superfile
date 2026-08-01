@@ -60,6 +60,12 @@ func ValidateConfig(c *ConfigType) error {
 		)
 	}
 
+	if c.PreviewCacheMaxSizeMB < 0 {
+		return errors.New(
+			LoadConfigError("preview_cache_max_size_mb", "Preview cache max size must be >= 0."),
+		)
+	}
+
 	if c.SidebarWidth != 0 && (c.SidebarWidth < 5 || c.SidebarWidth > 20) {
 		return errors.New(LoadConfigError("sidebar_width", "Sidebar width must be 5–20, or 0 to hide the sidebar."))
 	}

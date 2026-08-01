@@ -37,6 +37,15 @@ default_open_file_preview = true
 # image?
 show_image_preview = true
 
+#-- Preview Thumbnail Cache
+# Persist generated thumbnails (video/pdf/ps) under the superfile cache directory
+# ($XDG_CACHE_HOME/superfile/preview). Disable to use session-only temp files.
+preview_cache_enabled = true
+
+# Maximum disk size for the preview thumbnail cache in megabytes.
+# Least-recently-used entries are removed when the limit is exceeded.
+preview_cache_max_size_mb = 1024
+
 #-- File Info Footer
 # Should we display a footer in the file panel that provides more file information?
 show_panel_footer_info = true

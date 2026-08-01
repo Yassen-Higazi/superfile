@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/yorukot/superfile/src/internal/common"
+	"github.com/yorukot/superfile/src/pkg/cache"
 	"github.com/yorukot/superfile/src/pkg/utils"
 
 	tea "charm.land/bubbletea/v2"
@@ -62,12 +63,17 @@ func Run(content embed.FS) {
 					logStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#66ff66"))
 					configStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff9999"))
 					dataStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff66ff"))
+					cacheStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#99ccff"))
 					fmt.Printf("%-*s %s\n", common.HelpKeyColumnWidth,
 						logStyle.Render("[Log file path]"), variable.LogFile)
 					fmt.Printf("%-*s %s\n", common.HelpKeyColumnWidth,
 						configStyle.Render("[Configuration directory path]"), variable.SuperFileMainDir)
 					fmt.Printf("%-*s %s\n", common.HelpKeyColumnWidth,
 						dataStyle.Render("[Data directory path]"), variable.SuperFileDataDir)
+					fmt.Printf("%-*s %s\n", common.HelpKeyColumnWidth,
+						cacheStyle.Render("[Cache directory path]"), variable.SuperFileCacheDir)
+					fmt.Printf("%-*s %s\n", common.HelpKeyColumnWidth,
+						cacheStyle.Render("[Preview cache directory path]"), variable.SuperFilePreviewCacheDir)
 					return nil
 				},
 				Flags: []cli.Flag{
@@ -77,6 +83,14 @@ func Run(content embed.FS) {
 						Usage:   "Print path to lastdir file (Where last dir is written when cd_on_quit config is true)",
 						Value:   false,
 					},
+				},
+			},
+			{
+				Name:    "clear-cache",
+				Aliases: []string{"cc"},
+				Usage:   "Clear the persistent preview thumbnail cache",
+				Action: func(_ context.Context, _ *cli.Command) error {
+					return clearPreviewCache()
 				},
 			},
 		},
@@ -176,6 +190,8 @@ func InitConfigFile() {
 		variable.SuperFileMainDir,
 		variable.SuperFileDataDir,
 		variable.SuperFileStateDir,
+		variable.SuperFileCacheDir,
+		variable.SuperFilePreviewCacheDir,
 		variable.ThemeFolder,
 	); err != nil {
 		utils.PrintlnAndExit("Error creating directories:", err)
@@ -199,6 +215,20 @@ func InitConfigFile() {
 	if err := writeConfigFile(variable.HotkeysFile, common.HotkeysTomlString); err != nil {
 		utils.PrintlnAndExit("Error writing config file:", err)
 	}
+}
+
+func clearPreviewCache() error {
+	fc, err := cache.NewFileCache(variable.SuperFilePreviewCacheDir, 0)
+	if err != nil {
+		return fmt.Errorf("open preview cache: %w", err)
+	}
+	sizeBefore := fc.Size()
+	if err := fc.Clear(); err != nil {
+		return fmt.Errorf("clear preview cache: %w", err)
+	}
+	fmt.Printf("Cleared preview cache at %s (%d bytes removed)\n",
+		variable.SuperFilePreviewCacheDir, sizeBefore)
+	return nil
 }
 
 // Check if is the first time initializing the app, if it is create

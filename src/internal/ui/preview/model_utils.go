@@ -56,7 +56,7 @@ func (m *Model) CleanUp() {
 	if m.thumbnailGenerator != nil {
 		err := m.thumbnailGenerator.CleanUp()
 		if err != nil {
-			slog.Error("Error While cleaning up TempDirectory", "error", err)
+			slog.Error("Error while cleaning up thumbnail generator", "error", err)
 		}
 	}
 }
