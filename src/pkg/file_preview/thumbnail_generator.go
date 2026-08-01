@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/singleflight"
+
 	"github.com/yorukot/superfile/src/internal/common"
 )
 
@@ -147,7 +149,10 @@ type ThumbnailGenerator struct {
 	tempFilesCache map[string]string
 	tempDirectory  string
 	mu             sync.Mutex
-	generators     []thumbnailGeneratorInterface
+	// sf ensures only one generation runs per source path at a time;
+	// concurrent callers wait and share the result.
+	sf         singleflight.Group
+	generators []thumbnailGeneratorInterface
 }
 
 func NewThumbnailGenerator() (*ThumbnailGenerator, error) {
@@ -199,31 +204,56 @@ func (g *ThumbnailGenerator) SupportsExt(ext string) bool {
 }
 
 func (g *ThumbnailGenerator) GetThumbnailOrGenerate(path string) (string, error) {
-	g.mu.Lock()
-	file, ok := g.tempFilesCache[path]
-	g.mu.Unlock()
+	if thumb, ok := g.cachedThumbnail(path); ok {
+		return thumb, nil
+	}
 
-	if ok {
-		_, err := os.Stat(file)
-		if err == nil {
-			return file, nil
+	// Single-flight: concurrent requests for the same path share one generation.
+	v, err, _ := g.sf.Do(path, func() (any, error) {
+		// Re-check cache: another flight may have finished between miss and Do.
+		if thumb, ok := g.cachedThumbnail(path); ok {
+			return thumb, nil
+		}
+
+		generatedThumbnailPath, err := g.generateThumbnail(path)
+		if err != nil {
+			return "", err
 		}
 
 		g.mu.Lock()
-		delete(g.tempFilesCache, path)
+		g.tempFilesCache[path] = generatedThumbnailPath
 		g.mu.Unlock()
-	}
 
-	generatedThumbnailPath, err := g.generateThumbnail(path)
+		return generatedThumbnailPath, nil
+	})
 	if err != nil {
 		return "", err
 	}
 
+	thumb, ok := v.(string)
+	if !ok {
+		return "", errors.New("unexpected thumbnail result type")
+	}
+	return thumb, nil
+}
+
+// cachedThumbnail returns a valid on-disk cached path for source path, if any.
+func (g *ThumbnailGenerator) cachedThumbnail(path string) (string, bool) {
 	g.mu.Lock()
-	g.tempFilesCache[path] = generatedThumbnailPath
+	file, ok := g.tempFilesCache[path]
 	g.mu.Unlock()
 
-	return generatedThumbnailPath, nil
+	if !ok {
+		return "", false
+	}
+
+	if _, err := os.Stat(file); err != nil {
+		g.mu.Lock()
+		delete(g.tempFilesCache, path)
+		g.mu.Unlock()
+		return "", false
+	}
+	return file, true
 }
 
 func (g *ThumbnailGenerator) generateThumbnail(path string) (string, error) {
