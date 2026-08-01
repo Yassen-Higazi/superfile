@@ -1,12 +1,12 @@
 package common
 
 import (
+	"image/color"
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/progress"
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/lipgloss/v2"
 
 	"github.com/yorukot/superfile/src/config/icon"
 )
@@ -67,7 +67,7 @@ func FullScreenStyle(height int, width int) lipgloss.Style {
 }
 
 // Return only fg and bg color style
-func StringColorRender(fgColor lipgloss.Color, bgColor lipgloss.Color) lipgloss.Style {
+func StringColorRender(fgColor color.Color, bgColor color.Color) lipgloss.Style {
 	return lipgloss.NewStyle().
 		Foreground(fgColor).
 		Background(bgColor)
@@ -87,16 +87,37 @@ func GenerateBorder() lipgloss.Border {
 	}
 }
 
-// Generate config error style
-func LoadConfigError(value string) string {
-	return lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5555")).Render("■ ERROR: ") +
-		"Config file \"" + lipgloss.NewStyle().Foreground(lipgloss.Color("#00D9FF")).Render(value) + "\" invalidation"
+func LoadConfigError(value string, msg string) string {
+	return UserConfigInvalidationErrorString(value, "Config", msg)
 }
 
-// Generate config error style
-func LoadHotkeysError(value string) string {
+func LoadHotkeysError(value string, msg string) string {
+	return UserConfigInvalidationErrorString(value, "Hotkey", msg)
+}
+
+func LoadThemeError(value string, msg string) string {
+	return UserConfigInvalidationErrorString(value, "Theme", msg)
+}
+
+func UserConfigInvalidationErrorString(value string, configType string, msg string) string {
 	return lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5555")).Render("■ ERROR: ") +
-		"Hotkeys file \"" + lipgloss.NewStyle().Foreground(lipgloss.Color("#00D9FF")).Render(value) + "\" invalidation"
+		configType + " value for \"" + lipgloss.NewStyle().Foreground(lipgloss.Color("#00D9FF")).Render(value) +
+		"\" is invalid : " + msg
+}
+
+func setTextInputStyles(ti *textinput.Model, textStyle, placeholderStyle lipgloss.Style) {
+	styles := ti.Styles()
+	styles.Focused.Prompt = lipgloss.NewStyle()
+	styles.Blurred.Prompt = lipgloss.NewStyle()
+	styles.Focused.Text = textStyle
+	styles.Blurred.Text = textStyle
+	styles.Focused.Placeholder = placeholderStyle
+	styles.Blurred.Placeholder = placeholderStyle
+	styles.Focused.Suggestion = placeholderStyle
+	styles.Blurred.Suggestion = placeholderStyle
+	styles.Cursor.Color = cursorColor
+	styles.Cursor.Blink = true
+	ti.SetStyles(styles)
 }
 
 // TODO : Fix Code duplication in textInput.Model creation
@@ -105,13 +126,9 @@ func LoadHotkeysError(value string) string {
 // Generate search bar for file panel
 func GenerateSearchBar() textinput.Model {
 	ti := textinput.New()
-	ti.Cursor.Style = FooterCursorStyle
-	ti.Cursor.TextStyle = FooterStyle
-	ti.TextStyle = FilePanelStyle
 	ti.Prompt = FilePanelTopDirectoryIconStyle.Render(icon.Search + icon.Space)
-	ti.Cursor.Blink = true
-	ti.PlaceholderStyle = FilePanelStyle
 	ti.Placeholder = "(" + Hotkeys.SearchBar[0] + ") Type something"
+	setTextInputStyles(&ti, FilePanelStyle, FilePanelStyle)
 	ti.Blur()
 	ti.CharLimit = 156
 	return ti
@@ -122,66 +139,47 @@ func GeneratePromptTextInput() textinput.Model {
 	t.Prompt = ""
 	t.CharLimit = 156
 	t.SetValue("")
-	t.Cursor.Style = ModalCursorStyle
-	t.Cursor.TextStyle = ModalStyle
-	t.TextStyle = ModalStyle
-	t.PlaceholderStyle = ModalStyle
+	setTextInputStyles(&t, ModalStyle, ModalStyle)
 
 	return t
 }
 
 func GenerateNewFileTextInput() textinput.Model {
 	t := textinput.New()
-	t.Cursor.Style = ModalCursorStyle
-	t.Cursor.TextStyle = ModalStyle
-	t.TextStyle = ModalStyle
-	t.Cursor.Blink = true
 	t.Placeholder = "Add \"" + string(filepath.Separator) + "\" transcend folders"
-	t.PlaceholderStyle = ModalStyle
+	setTextInputStyles(&t, ModalStyle, ModalStyle)
 	t.Focus()
 	t.CharLimit = 156
 	//nolint:mnd // modal width minus padding
-	t.Width = ModalWidth - 10
+	t.SetWidth(ModalWidth - 10)
 	return t
 }
 
 func GenerateRenameTextInput(width int, cursorPos int, defaultValue string) textinput.Model {
 	ti := textinput.New()
-	ti.Cursor.Style = FilePanelCursorStyle
-	ti.Cursor.TextStyle = FilePanelStyle
 	ti.Prompt = FilePanelCursorStyle.Render(icon.Cursor + " ")
-	ti.TextStyle = ModalStyle
-	ti.Cursor.Blink = true
 	ti.Placeholder = "New name"
-	ti.PlaceholderStyle = ModalStyle
+	setTextInputStyles(&ti, ModalStyle, ModalStyle)
 	ti.SetValue(defaultValue)
 	ti.SetCursor(cursorPos)
 	ti.Focus()
 	ti.CharLimit = 156
-	ti.Width = width
+	ti.SetWidth(width)
 
 	return ti
 }
 
 func GeneratePinnedRenameTextInput(cursorPos int, defaultValue string) textinput.Model {
 	ti := textinput.New()
-	ti.Cursor.Style = FilePanelCursorStyle
-	ti.Cursor.TextStyle = FilePanelStyle
 	ti.Prompt = FilePanelCursorStyle.Render(icon.Cursor + " ")
-	ti.TextStyle = ModalStyle
-	ti.Cursor.Blink = true
 	ti.Placeholder = "New name"
-	ti.PlaceholderStyle = ModalStyle
+	setTextInputStyles(&ti, ModalStyle, ModalStyle)
 	ti.SetValue(defaultValue)
 	ti.SetCursor(cursorPos)
 	ti.Focus()
 	ti.CharLimit = 156
-	ti.Width = Config.SidebarWidth - PanelPadding
+	ti.SetWidth(Config.SidebarWidth - PanelPadding)
 	return ti
-}
-
-func GenerateGradientColor() progress.Option {
-	return progress.WithScaledGradient(Theme.GradientColor[0], Theme.GradientColor[1])
 }
 
 func GenerateFooterBorder(countString string, width int) string {

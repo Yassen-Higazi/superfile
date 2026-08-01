@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/yorukot/superfile/src/internal/common"
-	"github.com/yorukot/superfile/src/internal/utils"
+	"github.com/yorukot/superfile/src/pkg/utils"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/urfave/cli/v3"
 	"golang.org/x/mod/semver"
 
@@ -82,6 +82,12 @@ func Run(content embed.FS) {
 		},
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
+				Name:    "debug-info",
+				Aliases: []string{"di"},
+				Usage:   "Print debug information",
+				Value:   false,
+			},
+			&cli.BoolFlag{
 				Name:    "fix-hotkeys",
 				Aliases: []string{"fh"},
 				Usage:   "Adds any missing hotkeys to the hotkey config file",
@@ -90,7 +96,7 @@ func Run(content embed.FS) {
 			&cli.BoolFlag{
 				Name:    "fix-config-file",
 				Aliases: []string{"fch"},
-				Usage:   "Adds any missing hotkeys to the hotkey config file",
+				Usage:   "Adds any missing fields to the config file",
 				Value:   false,
 			},
 			&cli.BoolFlag{
@@ -128,20 +134,23 @@ func Run(content embed.FS) {
 }
 
 func spfAppAction(_ context.Context, c *cli.Command) error {
+	variable.UpdateVarFromCliArgs(c)
+
+	if c.Bool("debug-info") {
+		printDebugInfo()
+		return nil
+	}
 	// If no args are called along with "spf" use current dir
 	firstPanelPaths := []string{""}
 	if c.Args().Present() {
 		firstPanelPaths = c.Args().Slice()
 	}
 
-	variable.UpdateVarFromCliArgs(c)
-
 	InitConfigFile()
 
 	firstUse := checkFirstUse()
 
-	p := tea.NewProgram(internal.InitialModel(firstPanelPaths, firstUse),
-		tea.WithAltScreen(), tea.WithMouseCellMotion())
+	p := tea.NewProgram(internal.InitialModel(firstPanelPaths, firstUse))
 	if _, err := p.Run(); err != nil {
 		utils.PrintfAndExitf("Alas, there's been an error: %v", err)
 	}

@@ -1,10 +1,12 @@
 package sidebar
 
-import "github.com/charmbracelet/bubbles/textinput"
+import "charm.land/bubbles/v2/textinput"
 
 type directory struct {
 	Location string `json:"location"`
 	Name     string `json:"name"`
+	Section  string `json:"-"`
+	Icon     string `json:"-"`
 }
 
 type Model struct {
@@ -18,4 +20,5 @@ type Model struct {
 	width       int
 	height      int
 	disabled    bool
+	sections    []string
 }

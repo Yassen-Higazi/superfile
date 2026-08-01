@@ -3,11 +3,12 @@ package internal
 import (
 	"log/slog"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/yorukot/superfile/src/internal/ui/metadata"
 	"github.com/yorukot/superfile/src/internal/ui/notify"
 	"github.com/yorukot/superfile/src/internal/ui/processbar"
+	"github.com/yorukot/superfile/src/internal/ui/spferror"
 )
 
 type ModelUpdateMessage interface {
@@ -42,6 +43,25 @@ func (msg PasteOperationMsg) ApplyToModel(m *model) tea.Cmd {
 	if (msg.state == processbar.Failed || msg.state == processbar.Successful) && m.clipboard.IsCut() {
 		m.clipboard.Reset(false)
 	}
+	return nil
+}
+
+type CreateOperationMsg struct {
+	BaseMessage
+
+	state processbar.ProcessState
+}
+
+func NewCreateOperationMsg(state processbar.ProcessState, reqID int) CreateOperationMsg {
+	return CreateOperationMsg{
+		state: state,
+		BaseMessage: BaseMessage{
+			reqID: reqID,
+		},
+	}
+}
+
+func (msg CreateOperationMsg) ApplyToModel(m *model) tea.Cmd {
 	return nil
 }
 
@@ -173,5 +193,25 @@ func NewNotifyModalMsg(m notify.Model, reqID int) NotifyModalUpdateMsg {
 
 func (msg NotifyModalUpdateMsg) ApplyToModel(m *model) tea.Cmd {
 	m.notifyModel = msg.m
+	return nil
+}
+
+type SpfErrorModalUpdateMsg struct {
+	BaseMessage
+
+	m spferror.Model
+}
+
+func NewSpfErrorModalMsg(m spferror.Model, reqID int) SpfErrorModalUpdateMsg {
+	return SpfErrorModalUpdateMsg{
+		m: m,
+		BaseMessage: BaseMessage{
+			reqID: reqID,
+		},
+	}
+}
+
+func (msg SpfErrorModalUpdateMsg) ApplyToModel(m *model) tea.Cmd {
+	m.spfError = msg.m
 	return nil
 }

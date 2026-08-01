@@ -8,12 +8,12 @@ import (
 	"runtime"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
-	"github.com/yorukot/superfile/src/internal/common"
-	"github.com/yorukot/superfile/src/internal/utils"
+	"github.com/yorukot/superfile/src/pkg/utils"
 
 	variable "github.com/yorukot/superfile/src/config"
+	"github.com/yorukot/superfile/src/internal/common"
 )
 
 // Back to parent directory
@@ -29,7 +29,7 @@ func (m *model) parentDirectory() {
 func (m *model) enterPanel() {
 	panel := m.getFocusedFilePanel()
 
-	if len(panel.Element) == 0 {
+	if panel.Empty() {
 		return
 	}
 	selectedItem := panel.GetFocusedItem()
@@ -57,7 +57,7 @@ func (m *model) enterPanel() {
 	}
 
 	if variable.ChooserFile != "" {
-		chooserErr := m.chooserFileWriteAndQuit(panel.Element[panel.Cursor].Location)
+		chooserErr := m.chooserFileWriteAndQuit(panel.GetFocusedItem().Location)
 		if chooserErr == nil {
 			return
 		}
@@ -70,7 +70,7 @@ func (m *model) enterPanel() {
 func (m *model) executeOpenCommand() {
 	panel := m.getFocusedFilePanel()
 
-	filePath := panel.Element[panel.Cursor].Location
+	filePath := panel.GetFocusedItem().Location
 
 	openCommand := "xdg-open"
 	switch runtime.GOOS {
@@ -80,6 +80,7 @@ func (m *model) executeOpenCommand() {
 		dllpath := filepath.Join(os.Getenv("SYSTEMROOT"), "System32", "rundll32.exe")
 		dllfile := "url.dll,FileProtocolHandler"
 
+		//nolint:gosec // Uses Windows system handler to open the selected file.
 		cmd := exec.Command(dllpath, dllfile, filePath)
 		err := cmd.Start()
 		if err != nil {
@@ -125,9 +126,8 @@ func (m *model) sidebarSelectDirectory() {
 
 // Toggle dotfile display or not
 func (m *model) toggleDotFileController() {
-	m.toggleDotFile = !m.toggleDotFile
-	m.updatedToggleDotFile = true
-	err := utils.WriteBoolFile(variable.ToggleDotFile, m.toggleDotFile)
+	m.fileModel.ToggleDotFile()
+	err := utils.WriteBoolFile(variable.ToggleDotFile, m.fileModel.DisplayDotFiles)
 	if err != nil {
 		slog.Error("Error while updating toggleDotFile data", "error", err)
 	}
@@ -155,7 +155,7 @@ func (m *model) searchBarFocus() {
 	}
 
 	// config search bar width
-	panel.SearchBar.Width = m.fileModel.SinglePanelWidth - common.InnerPadding
+	panel.SearchBar.SetWidth(m.fileModel.SinglePanelWidth - common.InnerPadding)
 }
 
 func (m *model) sidebarSearchBarFocus() {

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/yorukot/superfile/src/internal/utils"
+	"github.com/yorukot/superfile/src/pkg/utils"
 )
 
 /*
@@ -59,6 +59,21 @@ func TestFilePreviewRenderWithDimensions(t *testing.T) {
 			expectedPreview: "" +
 				"abcd\n" +
 				"1234",
+		},
+		{
+			// #1290: highlighted files should expand tabs to tab stops too
+			name: "Tab expansion through syntax highlighting",
+			fileContent: "" +
+				"abc\t0123\n" +
+				"a\t0123\n" +
+				"abcd\tX",
+			fileName: "tabs.txt",
+			height:   3,
+			width:    9,
+			expectedPreview: "" +
+				"abc 0123 \n" +
+				"a   0123 \n" +
+				"abcd    X",
 		},
 		{
 			name: "Width and height truncation",
@@ -151,7 +166,8 @@ func TestFilePreviewRenderWithDimensions(t *testing.T) {
 			require.NoError(t, err)
 
 			m := New()
-			res := ansi.Strip(m.RenderWithPath(filePath, tt.width, tt.height, tt.width))
+			render, _ := m.RenderWithPath(filePath, tt.width, tt.height, tt.width)
+			res := ansi.Strip(render)
 
 			assert.Equal(t, tt.expectedPreview, res, "filePath = %s", filePath)
 		})

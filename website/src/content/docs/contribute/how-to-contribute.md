@@ -12,11 +12,11 @@ Welcome to **superfile**! This guide will help you get started contributing to t
 
 There are many ways to contribute:
 
-* Reporting bugs
-* Fixing issues
-* Adding a theme
-* Suggesting and implementing new features
-* Sharing ideas or feedback
+- Reporting bugs
+- Fixing issues
+- Adding a theme
+- Suggesting and implementing new features
+- Sharing ideas or feedback
 
 ---
 
@@ -46,50 +46,49 @@ Before starting, make sure the theme you want to add doesn’t already exist.
 3. Test it by editing your `~/.config/superfile/config/config.toml`
 4. When ready, submit a pull request
 5. To ensure the theme looks consistent and functions properly, please include the following screenshots in your PR:
+
 - Full view of superfile (Including sidebar, file previewer, process panel, metadata panel, and clipboard panel )
-    - Make sure that file previewer is non empty, process panel has at least one process, and clipboard has at least one entry
-- Add a screenshot of these individual panel being focused (To make sure border focus color is good)
-    - Sidebar
-    - Processbar
+  - Make sure that file previewer is non empty, process panel has at least one process, and clipboard has at least one entry
+- Add a screenshot of these individual panels being focused (To make sure border focus color is good)
+  - Sidebar
+  - Process panel
 - Add a screenshot of help menu (Press ?)
 - Add a screenshot of popup that opens when you create a new file (Ctrl+n)
-- Add a screenshot of image being preview using your theme.
+- Add a screenshot of image being previewed using your theme.
 - Add a screenshot of successful and unsuccessful shell command.
 <details>
 <summary>Example:</summary>
 
 - Full view of superfile (Including sidebar, file previewer, process panel, metadata panel, and clipboard panel)
-
   - Make sure that file previewer is non empty, process panel has at least one process, and clipboard has at least one entry
 
-  ![Full view of superfile](https://raw.githubusercontent.com/yorukot/superfile/main/asset/theme-example/1.png)
+  ![Full view of superfile](../../../assets/contributing/theme-example/1.png)
 
 - Add a screenshot of these individual panels being focused (To make sure border focus color is good)
-
   - Sidebar
-  - Processbar
+  - Process panel
 
-  ![Sidebar focused](https://raw.githubusercontent.com/yorukot/superfile/main/asset/theme-example/2.png)
+  ![Sidebar focused](../../../assets/contributing/theme-example/2.png)
 
-  ![Processbar focused](https://raw.githubusercontent.com/yorukot/superfile/main/asset/theme-example/3.png)
+  ![Process panel focused](../../../assets/contributing/theme-example/3.png)
 
 - Add a screenshot of help menu (Press `?`)
 
-  ![Help menu](https://raw.githubusercontent.com/yorukot/superfile/main/asset/theme-example/4.png)
+  ![Help menu](../../../assets/contributing/theme-example/4.png)
 
 - Add a screenshot of popup that opens when you create a new file (Ctrl+n)
 
-  ![New file popup](https://raw.githubusercontent.com/yorukot/superfile/main/asset/theme-example/5.png)
+  ![New file popup](../../../assets/contributing/theme-example/5.png)
 
 - Add a screenshot of image being previewed using your theme
 
-  ![Image preview](https://raw.githubusercontent.com/yorukot/superfile/main/asset/theme-example/6.png)
+  ![Image preview](../../../assets/contributing/theme-example/6.png)
 
 - Add a screenshot of successful and unsuccessful shell command
 
-  ![Successful shell command](https://raw.githubusercontent.com/yorukot/superfile/main/asset/theme-example/7.png)
+  ![Successful shell command](../../../assets/contributing/theme-example/7.png)
 
-  ![Failed shell command](https://raw.githubusercontent.com/yorukot/superfile/main/asset/theme-example/8.png)
+  ![Failed shell command](../../../assets/contributing/theme-example/8.png)
 
 </details>
 
@@ -107,8 +106,7 @@ Got a new idea? Awesome!
 
 ## 🧩 Don’t Know Where to Start?
 
-Check out GitHub’s official guide:
-[https://docs.github.com/en/get-started/exploring-projects-on-github/contributing-to-a-project](https://docs.github.com/en/get-started/exploring-projects-on-github/contributing-to-a-project)
+Check out GitHub’s official guide: [https://docs.github.com/en/get-started/exploring-projects-on-github/contributing-to-a-project](https://docs.github.com/en/get-started/exploring-projects-on-github/contributing-to-a-project)
 
 Still unsure? Open a discussion — we’re happy to help.
 
@@ -118,12 +116,13 @@ Still unsure? Open a discussion — we’re happy to help.
 
 Please make sure your PR follows these steps:
 
-* [ ] I have run `go fmt ./...` to format the code
-* [ ] I have run `golangci-lint run` and fixed any reported issues
-* [ ] I have tested my changes and verified they work as expected
-* [ ] I have reviewed the diff to make sure I’m not committing any debug logs or TODOs
-* [ ] I have filled out the PR template with description, context, and screenshots if needed
-- [ ] I have checked that the PR title follows the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) format
+- [ ] I have run `go fmt ./...` to format the code
+- [ ] I have run `golangci-lint run` and fixed any reported issues
+- [ ] I have tested my changes and verified they work as expected
+- [ ] I have reviewed the diff to make sure I’m not committing any debug logs or TODOs
+- [ ] I have filled out the PR template with description, context, and screenshots if needed
+
+* [ ] I have checked that the PR title follows the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) format
 
 ---
 

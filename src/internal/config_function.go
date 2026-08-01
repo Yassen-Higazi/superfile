@@ -9,14 +9,15 @@ import (
 
 	zoxidelib "github.com/lazysegtree/go-zoxide"
 
+	"github.com/yorukot/superfile/src/pkg/utils"
+
 	"github.com/yorukot/superfile/src/internal/ui/filepanel"
+
+	"github.com/barasher/go-exiftool"
 
 	"github.com/yorukot/superfile/src/internal/ui/processbar"
 	"github.com/yorukot/superfile/src/internal/ui/rendering"
 	"github.com/yorukot/superfile/src/internal/ui/sidebar"
-	"github.com/yorukot/superfile/src/internal/utils"
-
-	"github.com/barasher/go-exiftool"
 
 	variable "github.com/yorukot/superfile/src/config"
 	"github.com/yorukot/superfile/src/config/icon"

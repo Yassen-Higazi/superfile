@@ -12,6 +12,7 @@ var (
 
 	// Well Known Directories
 	Home        = "\U000f02dc" // Printable Rune : "󰋜"
+	Desktop     = "\U000f01c4" // Printable Rune : "󰇄"
 	Download    = "\U000f03d4" // Printable Rune : "󰏔"
 	Documents   = "\U000f0219" // Printable Rune : "󰈙"
 	Pictures    = "\U000f02e9" // Printable Rune : "󰋩"
@@ -131,6 +132,7 @@ var Icons = map[string]Style{
 	"pl":           {Icon: "\ue7a1", Color: "#3498db"},     // Printable Rune : ""
 	"prisma":       {Icon: "\ue684", Color: "#9b59b6"},     // Printable Rune : ""
 	"ppt":          {Icon: "\uf1c4", Color: "#c0392b"},     // Printable Rune : ""
+	"ps":           {Icon: "\U000f1517", Color: "#d35400"}, // Printable Rune : "󱔗"
 	"psd":          {Icon: "\ue7b8", Color: "#3498db"},     // Printable Rune : ""
 	"py":           {Icon: "\ue606", Color: "#3498db"},     // Printable Rune : ""
 	"r":            {Icon: "\ue68a", Color: "#9b59b6"},     // Printable Rune : ""

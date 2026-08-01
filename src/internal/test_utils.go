@@ -6,15 +6,16 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	zoxidelib "github.com/lazysegtree/go-zoxide"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/yorukot/superfile/src/pkg/utils"
+
 	"github.com/yorukot/superfile/src/internal/ui/filepanel"
 
 	"github.com/yorukot/superfile/src/internal/common"
-	"github.com/yorukot/superfile/src/internal/utils"
 )
 
 const DefaultTestTick = 10 * time.Millisecond
@@ -52,7 +53,8 @@ func setModelParamsForTest(m *model, disablePreview bool) *model {
 		m.fileModel.FilePreview.Close()
 	}
 	// async size updates like preview panel content update
-	// will not be done
+	// will not be done. Note: This is only for direct usage of 'model'
+	// NewTestTeaProgWithEventLoop overwrites it.
 	TeaUpdate(m, tea.WindowSizeMsg{Width: DefaultTestModelWidth, Height: DefaultTestModelHeight})
 	return m
 }
@@ -203,27 +205,6 @@ func verifySuccessfulPasteResults(t *testing.T, targetDir string, expectedDestFi
 }
 
 // -------------- Other utilities
-
-// Helper function to find item index in panel by name
-func findItemIndexInPanel(panel *filepanel.Model, itemName string) int {
-	for i, elem := range panel.Element {
-		if elem.Name == itemName {
-			return i
-		}
-	}
-	return -1
-}
-
-// Helper function to find item index in panel by name
-func findItemIndexInPanelByLocation(panel *filepanel.Model, itemLocation string) int {
-	for i, elem := range panel.Element {
-		if elem.Location == itemLocation {
-			return i
-		}
-	}
-	return -1
-}
-
 // Helper function to navigate to target directory if different from start
 func navigateToTargetDir(t *testing.T, m *model, startDir, targetDir string) {
 	t.Helper()
@@ -244,21 +225,21 @@ func getOriginalPath(useSelectMode bool, itemName, startDir string) string {
 
 func setFilePanelSelectedItemByLocation(t *testing.T, panel *filepanel.Model, filePath string) {
 	t.Helper()
-	idx := findItemIndexInPanelByLocation(panel, filePath)
+	idx := panel.FindElementIndexByLocation(filePath)
 	require.NotEqual(t, -1, idx, "%s should be found in panel", filePath)
-	panel.Cursor = idx
+	panel.SetCursorPosition(idx)
 }
 
 func setFilePanelSelectedItemByName(t *testing.T, panel *filepanel.Model, fileName string) {
 	t.Helper()
-	idx := findItemIndexInPanel(panel, fileName)
+	idx := panel.FindElementIndexByName(fileName)
 	require.NotEqual(t, -1, idx, "%s should be found in panel", fileName)
-	panel.Cursor = idx
+	panel.SetCursorPosition(idx)
 }
 
 func splitPanelAsync(p *TeaProg) {
 	p.SendKey(common.Hotkeys.OpenSPFPrompt[0])
 	p.SendKey("split")
-	p.Send(tea.KeyMsg{Type: tea.KeyEnter})
-	p.Send(tea.KeyMsg{Type: tea.KeyEsc})
+	p.Send(tea.KeyPressMsg{Code: tea.KeyEnter})
+	p.Send(tea.KeyPressMsg{Code: tea.KeyEsc})
 }

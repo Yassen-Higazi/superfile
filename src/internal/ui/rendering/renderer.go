@@ -3,10 +3,12 @@ package rendering
 import (
 	"errors"
 	"fmt"
+	"image/color"
+	"log/slog"
 	"math/rand/v2"
 	"strconv"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 type StyleModifier func(lipgloss.Style) lipgloss.Style
@@ -15,9 +17,7 @@ type StyleModifier func(lipgloss.Style) lipgloss.Style
 // We may allow that later.
 // Also we could have functions about getting sections count, line count, adding updating a
 // specific line in a specific section, and adjusting section sizes. But not needed now.
-// TODO: zero value of Renderer - `Renderer{}` is unusable,
-// It will cause panic on AddLines(), completely eliminate usage of zero values
-// in the code.
+// NOTE: Renderer's zero value isn't safe to use, always use NewRenderer()
 type Renderer struct {
 
 	// Current sectionization will not allow to predefine section
@@ -28,9 +28,10 @@ type Renderer struct {
 	// Empty for last section . len(sectionDividers) should be equal to len(contentSections) - 1
 	sectionDividers []string
 	curSectionIdx   int
-	// Including Dividers - Count of actual lines that were added. It maybe <= totalHeight - 2
-	actualContentHeight int
-	defTruncateStyle    TruncateStyle
+	// Including dividers, this is the committed height before the current section.
+	// It excludes lines currently buffered in contentSections[curSectionIdx].
+	committedContentHeight int
+	defTruncateStyle       TruncateStyle
 
 	// Whether to reduce rendered height to fit number of lines
 	truncateHeight bool
@@ -38,12 +39,12 @@ type Renderer struct {
 	border BorderConfig
 
 	// Should this go in contentRenderer - No . ContentRenderer is not for storing style configs
-	contentFGColor lipgloss.TerminalColor
-	contentBGColor lipgloss.TerminalColor
+	contentFGColor color.Color
+	contentBGColor color.Color
 
 	// Should this go in borderConfig ?
-	borderFGColor lipgloss.TerminalColor
-	borderBGColor lipgloss.TerminalColor
+	borderFGColor color.Color
+	borderBGColor color.Color
 
 	// Use this to add additional style modifications
 	// This is applied before any style update that are defined by other configurations,
@@ -79,11 +80,11 @@ type RendererConfig struct {
 	TruncateHeight   bool
 	BorderRequired   bool
 
-	ContentFGColor lipgloss.TerminalColor
-	ContentBGColor lipgloss.TerminalColor
+	ContentFGColor color.Color
+	ContentBGColor color.Color
 
-	BorderFGColor lipgloss.TerminalColor
-	BorderBGColor lipgloss.TerminalColor
+	BorderFGColor color.Color
+	BorderBGColor color.Color
 
 	Border       lipgloss.Border
 	RendererName string
@@ -109,7 +110,15 @@ func NewRenderer(cfg RendererConfig) (*Renderer, error) {
 	if err := validate(cfg); err != nil {
 		return nil, err
 	}
+	return createRendererWithValidatedConfig(cfg), nil
+}
 
+func NewRendererWithAutoFixConfig(cfg RendererConfig) *Renderer {
+	validateAndAutoFix(&cfg)
+	return createRendererWithValidatedConfig(cfg)
+}
+
+func createRendererWithValidatedConfig(cfg RendererConfig) *Renderer {
 	contentHeight := cfg.TotalHeight
 	if cfg.BorderRequired {
 		contentHeight -= 2
@@ -124,11 +133,11 @@ func NewRenderer(cfg RendererConfig) (*Renderer, error) {
 		contentSections: []ContentRenderer{
 			NewContentRenderer(contentHeight, contentWidth, cfg.DefTruncateStyle, cfg.RendererName),
 		},
-		sectionDividers:     nil,
-		curSectionIdx:       0,
-		actualContentHeight: 0,
-		defTruncateStyle:    cfg.DefTruncateStyle,
-		truncateHeight:      cfg.TruncateHeight,
+		sectionDividers:        nil,
+		curSectionIdx:          0,
+		committedContentHeight: 0,
+		defTruncateStyle:       cfg.DefTruncateStyle,
+		truncateHeight:         cfg.TruncateHeight,
 
 		border: NewBorderConfig(cfg.TotalHeight, cfg.TotalWidth),
 
@@ -145,7 +154,24 @@ func NewRenderer(cfg RendererConfig) (*Renderer, error) {
 		borderRequired: cfg.BorderRequired,
 		borderStrings:  cfg.Border,
 		name:           cfg.RendererName,
-	}, nil
+	}
+}
+
+// There is code duplication with `validate` but, I can't think of any clean design pattern to fix that.
+// Note: Having a function validate(cfg,autoFix) error and ensure err is not nil via panic is not clean.
+func validateAndAutoFix(cfg *RendererConfig) {
+	if cfg.TotalHeight < 0 || cfg.TotalWidth < 0 {
+		slog.Debug("AutoFixConfig: clamping negative dimensions", "h", cfg.TotalHeight, "w", cfg.TotalWidth)
+		cfg.TotalHeight = max(0, cfg.TotalHeight)
+		cfg.TotalWidth = max(0, cfg.TotalWidth)
+	}
+	if cfg.BorderRequired {
+		if cfg.TotalWidth < MinWidthForBorder || cfg.TotalHeight < MinHeightForBorder {
+			slog.Debug("AutoFixConfig: disabling border due to insufficient dimensions",
+				"h", cfg.TotalHeight, "w", cfg.TotalWidth)
+			cfg.BorderRequired = false
+		}
+	}
 }
 
 func validate(cfg RendererConfig) error {

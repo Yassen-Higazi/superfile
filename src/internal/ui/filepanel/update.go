@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 
-	"github.com/yorukot/superfile/src/internal/utils"
+	"github.com/yorukot/superfile/src/pkg/utils"
 )
 
 func (m *Model) ChangeFilePanelMode() {
@@ -34,8 +35,8 @@ func (m *Model) UpdateCurrentFilePanelDir(path string) error {
 	// NOTE: This could be a configurable feature
 	// Update the cursor and render status in case we switch back to this.
 	m.DirectoryRecords[m.Location] = directoryRecord{
-		directoryCursor: m.Cursor,
-		directoryRender: m.RenderIndex,
+		directoryCursor: m.cursor,
+		directoryRender: m.renderIndex,
 	}
 
 	if info, err := os.Stat(path); err != nil {
@@ -44,23 +45,29 @@ func (m *Model) UpdateCurrentFilePanelDir(path string) error {
 		return fmt.Errorf("%s is not a directory", path)
 	}
 
+	// In case of switching to parent, explicitly set focus.
+	// This is to handle when there isn't a DirectoryRecord, yet.
+	if filepath.Dir(m.Location) == path {
+		m.TargetFile = filepath.Base(m.Location)
+	}
 	// Switch to "path"
 	m.Location = path
 
-	// TODO(BUG) : We are fetching the cursor and render from cache, but this could become invalid
+	// NOTE: We are fetching the cursor and render from cache, but this could become invalid
 	// in case user deletes some items in the directory via another file manager and then switch back
-	// Basically this directoryRecords cache can be invalid. On each Update(), we must validate
-	// the cursor and render values.
+	// Basically this directoryRecords cache can be invalid. On each Update(), on dire change
+	// we do a element fetch and validate the cursor and render values. But the filepane could
+	// stay in invalid state till that and operations done before the update may fail
 	curDirectoryRecord, hasRecord := m.DirectoryRecords[m.Location]
 	if hasRecord {
-		m.Cursor = curDirectoryRecord.directoryCursor
-		m.RenderIndex = curDirectoryRecord.directoryRender
+		m.cursor = curDirectoryRecord.directoryCursor
+		m.renderIndex = curDirectoryRecord.directoryRender
 	} else {
-		m.Cursor = 0
-		m.RenderIndex = 0
+		m.cursor = 0
+		m.renderIndex = 0
 	}
 
-	slog.Debug("updateCurrentFilePanelDir : After update", "cursor", m.Cursor, "render", m.RenderIndex)
+	slog.Debug("updateCurrentFilePanelDir : After update", "cursor", m.cursor, "render", m.renderIndex)
 
 	// Reset the searchbar Value
 	// TODO(Refactoring) : Have a common searchBar type for sidebar and this search bar.
@@ -75,7 +82,7 @@ func (m *Model) ParentDirectory() error {
 
 // Select all item in the file panel (only work on select mode)
 func (m *Model) SelectAllItem() {
-	for _, item := range m.Element {
+	for _, item := range m.element {
 		m.SetSelected(item.Location)
 	}
 }

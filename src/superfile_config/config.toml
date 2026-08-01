@@ -52,7 +52,8 @@ default_directory = "."
 file_size_use_si = false
 
 #-- Default File Sort Type
-# (0: Name, 1: Size, 2: Date Modified, 3: Type).
+# (0: Name, 1: Size, 2: Date Modified, 3: Type, 4: Natural).
+# Natural sort treats numeric sequences as numbers (e.g., file2 before file10).
 default_sort_type = 0
 
 #-- Sort Order Reversing
@@ -60,7 +61,7 @@ default_sort_type = 0
 # false: Ascending.
 sort_order_reversed = false
 
-#-- Case-Sensitive Sorting (only for Name Sort)
+#-- Case-Sensitive Sorting
 # An uppercase "B" comes before a lowercase "a" if true.
 case_sensitive_sort = false
 
@@ -78,6 +79,15 @@ debug = false
 #-- Ignore Missing Config Fields
 # Whether to silence any warnings about missing config fields.
 ignore_missing_fields = false
+
+#-- File Panel Extra Columns Count
+# Count of extra columns in file panel in addition to file name. When option equal 0 then feature is disabled.
+file_panel_extra_columns = 0
+
+#-- File name width in File Panel
+# Percentage of file panel width allocated to file names (25-100). Higher values give more space to names, less to extra columns.
+file_panel_name_percent = 50
+
 
 ###############################################################################
 #                                   Styling                                   #
@@ -121,6 +131,11 @@ enable_file_preview_border = false
 # Values recommended to be in 5–20.
 sidebar_width = 20
 
+#-- Sidebar Section Order
+# Order of sidebar sections (valid values: "home", "pinned", "disks")
+# Only enabled sections will be displayed
+sidebar_sections = ["home", "pinned", "disks"]
+
 #-- Border
 # Make sure to add strings that are exactly one character wide!
 # Use ' ' for borderless.
@@ -148,7 +163,7 @@ border_middle_right = '┤'
 metadata = false
 
 #-- MD5 Checksum Generation
-# Requires: md5sum
+# No external dependency required
 enable_md5_checksum = false
 #
 #-- Zoxide Support - Smart directory navigation!

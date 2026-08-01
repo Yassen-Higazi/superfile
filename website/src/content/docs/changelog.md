@@ -10,11 +10,179 @@ head:
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC(YYYY-MM-DD).
 
+# [**v1.6.0**](https://github.com/yorukot/superfile/releases/tag/v1.6.0)
+
+> 2026-06-08
+
+#### Update
+
+- Add configuration options for sidebar section visibility and ordering [`#1323`](https://github.com/yorukot/superfile/pull/1323)
+- Add binary architecture detection for ELF, PE, and Mach-O [`#1328`](https://github.com/yorukot/superfile/pull/1328)
+- Add --debug-info flag [`#1332`](https://github.com/yorukot/superfile/pull/1332)
+- Focus on current directory on navigation to parent directory in a filepanel [`#1340`](https://github.com/yorukot/superfile/pull/1340)
+- Add split_file_panel key function [`#1344`](https://github.com/yorukot/superfile/pull/1344)
+- Refresh file metadata when focusing metadata panel [`#1372`](https://github.com/yorukot/superfile/pull/1372)
+- Add Desktop directory to well-known directories [`#1386`](https://github.com/yorukot/superfile/pull/1386)
+- Add support for Postscript files [`#1399`](https://github.com/yorukot/superfile/pull/1399)
+- Bubbletea v2 migration [`#1406`](https://github.com/yorukot/superfile/pull/1406)
+- Detailed information about delete operation errors for the user [`#1408`](https://github.com/yorukot/superfile/pull/1408)
+- Add file type byte to permissions column [`#1410`](https://github.com/yorukot/superfile/pull/1410)
+- New website & logo design [`#1423`](https://github.com/yorukot/superfile/pull/1423)
+- Add Linux attributes to metadata [`#1432`](https://github.com/yorukot/superfile/pull/1432)
+- More informative content of the error text for file text preview [`#1436`](https://github.com/yorukot/superfile/pull/1436)
+
+#### Bug Fix
+
+- Resolve Nix build failure [`#1298`](https://github.com/yorukot/superfile/pull/1298)
+- Prune Inaccessible Items from clipboard before pasting [`#1300`](https://github.com/yorukot/superfile/pull/1300)
+- Correct jump back to parent directories cursor position [`#1316`](https://github.com/yorukot/superfile/pull/1316)
+- Move toggleDot files to fileModel and force re render on toggle [`#1324`](https://github.com/yorukot/superfile/pull/1324)
+- Update xz to v0.5.15 to enable cross-compile again [`#1327`](https://github.com/yorukot/superfile/pull/1327)
+- Prevent crash due to invalid theme [`#1355`](https://github.com/yorukot/superfile/pull/1355)
+- Prevent panic from zero-value Renderer usage [`#1358`](https://github.com/yorukot/superfile/pull/1358)
+- Remove panic statements in production code [`#1359`](https://github.com/yorukot/superfile/pull/1359)
+- Allow natural_sort as sort option [`#1237`](https://github.com/yorukot/superfile/pull/1237)
+- Disable interactive commands in shell mode(darwin/linux) [`#1364`](https://github.com/yorukot/superfile/pull/1364)
+- Multy-column header misalignment [`#1362`](https://github.com/yorukot/superfile/pull/1362)
+- Remove showing two fractional digits of Byte for files with small size [`#1370`](https://github.com/yorukot/superfile/pull/1370)
+- Resolve Nix build failure [`#1373`](https://github.com/yorukot/superfile/pull/1373)
+- Disable broken Nix check phase [`#1374`](https://github.com/yorukot/superfile/pull/1374)
+- Reword --help for fch [`#1391`](https://github.com/yorukot/superfile/pull/1391)
+- Unable to select Natural sort [`#1413`](https://github.com/yorukot/superfile/pull/1413)
+- Change FormatFileSize to use configured units [`#1419`](https://github.com/yorukot/superfile/pull/1419)
+- Thread safe ioReqCnt [`#1420`](https://github.com/yorukot/superfile/pull/1420)
+- Files processed in deterministic order [`#1421`](https://github.com/yorukot/superfile/pull/1421)
+- Detailed information about paste operation errors for the user [`#1431`](https://github.com/yorukot/superfile/pull/1431)
+
+#### Optimization
+
+- Refactor sort Modal to seperate package [`#1325`](https://github.com/yorukot/superfile/pull/1325)
+- Refactor helpMenu Modal to seperate package [`#1335`](https://github.com/yorukot/superfile/pull/1335)
+- Refactor utils package to pkg [`#1365`](https://github.com/yorukot/superfile/pull/1365)
+
+#### Documentation
+
+- Add jetbrains logo [`#1292`](https://github.com/yorukot/superfile/pull/1292)
+- Grammar corrections in readme and removed a redundant link in site [`#1302`](https://github.com/yorukot/superfile/pull/1302)
+- Add special thanks page [`#1317`](https://github.com/yorukot/superfile/pull/1317)
+- Add missing fields to vim like superfile hotkeys [`#1318`](https://github.com/yorukot/superfile/pull/1318)
+- Add download badges to README [`#1404`](https://github.com/yorukot/superfile/pull/1404)
+- Fix `behviour` -> `behaviour` typo in tmux.md [`#1427`](https://github.com/yorukot/superfile/pull/1427)
+- Update core contributer [`#1429`](https://github.com/yorukot/superfile/pull/1429)
+- Add notice page and fix tutorial page discuss issue [`#1433`](https://github.com/yorukot/superfile/pull/1433)
+- Fix broken demo GIF path [`#1465`](https://github.com/yorukot/superfile/pull/1465) by [`@NouemanKHAL`](https://github.com/NouemanKHAL)
+
+#### Dependencies
+
+- Update astro monorepo [`#1313`](https://github.com/yorukot/superfile/pull/1313), [`#1376`](https://github.com/yorukot/superfile/pull/1376)
+- Update Astro and Starlight dependencies [`#1294`](https://github.com/yorukot/superfile/pull/1294), [`#1308`](https://github.com/yorukot/superfile/pull/1308), [`#1319`](https://github.com/yorukot/superfile/pull/1319), [`#1338`](https://github.com/yorukot/superfile/pull/1338), [`#1383`](https://github.com/yorukot/superfile/pull/1383), [`#1394`](https://github.com/yorukot/superfile/pull/1394)
+- Update expressive-code plugins [`#1309`](https://github.com/yorukot/superfile/pull/1309), [`#1310`](https://github.com/yorukot/superfile/pull/1310), [`#1366`](https://github.com/yorukot/superfile/pull/1366), [`#1377`](https://github.com/yorukot/superfile/pull/1377)
+- Update website dependencies [`#1395`](https://github.com/yorukot/superfile/pull/1395), [`#1396`](https://github.com/yorukot/superfile/pull/1396)
+- Update Go module dependencies [`#1296`](https://github.com/yorukot/superfile/pull/1296), [`#1314`](https://github.com/yorukot/superfile/pull/1314), [`#1329`](https://github.com/yorukot/superfile/pull/1329), [`#1339`](https://github.com/yorukot/superfile/pull/1339), [`#1389`](https://github.com/yorukot/superfile/pull/1389), [`#1400`](https://github.com/yorukot/superfile/pull/1400), [`#1401`](https://github.com/yorukot/superfile/pull/1401), [`#1418`](https://github.com/yorukot/superfile/pull/1418), [`#1426`](https://github.com/yorukot/superfile/pull/1426), [`#1430`](https://github.com/yorukot/superfile/pull/1430), [`#1447`](https://github.com/yorukot/superfile/pull/1447), [`#1450`](https://github.com/yorukot/superfile/pull/1450)
+
+#### Misc
+
+- Update tracking code [`#1301`](https://github.com/yorukot/superfile/pull/1301)
+- Add sidebar section layout test [`#1384`](https://github.com/yorukot/superfile/pull/1384)
+- Fix incomplete test coverage in navigation_test.go [`#1387`](https://github.com/yorukot/superfile/pull/1387)
+- Add new workflow for PR auto labeling [`#1398`](https://github.com/yorukot/superfile/pull/1398)
+- Fix GitHub auto-labeling workflow [`#1405`](https://github.com/yorukot/superfile/pull/1405)
+- Update GitHub Actions workflow triggers and permissions [`#1424`](https://github.com/yorukot/superfile/pull/1424)
+- Some tests for modal error message [`#1435`](https://github.com/yorukot/superfile/pull/1435)
+- Update workflow configuration [`#1451`](https://github.com/yorukot/superfile/pull/1451)
+
+# [**v1.5.0**](https://github.com/yorukot/superfile/releases/tag/v1.5.0)
+
+> 2026-01-11
+
+#### Update
+
+- allow hover to file [`#1177`](https://github.com/yorukot/superfile/pull/1177)
+- show count selected items in select mode [`#1187`](https://github.com/yorukot/superfile/pull/1187)
+- Add icon alias for kts to kt [`#1153`](https://github.com/yorukot/superfile/pull/1153)
+- link icon and metadata [`#1171`](https://github.com/yorukot/superfile/pull/1171)
+- user configuration of editors by file extension [`#1197`](https://github.com/yorukot/superfile/pull/1197)
+- add video preview support [`#1178`](https://github.com/yorukot/superfile/pull/1178)
+- Add pdf preview support [`#1198`](https://github.com/yorukot/superfile/pull/1198)
+- Add icons in pinned directories [`#1215`](https://github.com/yorukot/superfile/pull/1215)
+- Enable fast configurable navigation [`#1220`](https://github.com/yorukot/superfile/pull/1220)
+- add Trash bin to default directories for Linux [`#1236`](https://github.com/yorukot/superfile/pull/1236)
+- add terminal stdout support for shell commands [`#1250`](https://github.com/yorukot/superfile/pull/1250)
+- More columns in file panel (MVP) [`#1268`](https://github.com/yorukot/superfile/pull/1268)
+
+#### Bug Fix
+
+- only calculate checksum on files [`#1119`](https://github.com/yorukot/superfile/pull/1119)
+- Linter issue with PrintfAndExit [`#1133`](https://github.com/yorukot/superfile/pull/1133)
+- Remove repeated os.ReadDir calls [`#1155`](https://github.com/yorukot/superfile/pull/1155)
+- Disable COPYFILE in macOS [`#1194`](https://github.com/yorukot/superfile/pull/1194)
+- add missing hotkeys to help menu [`#1192`](https://github.com/yorukot/superfile/pull/1192)
+- Fetch latest version automatically [`#1127`](https://github.com/yorukot/superfile/pull/1127)
+- Use async methods to prevent test race conditions [`#1201`](https://github.com/yorukot/superfile/pull/1201)
+- update metadata and process bar sizes when toggling footer [`#1218`](https://github.com/yorukot/superfile/pull/1218)
+- File panel dimension management [`#1222`](https://github.com/yorukot/superfile/pull/1222)
+- Layout fixes with full end-to-end tests [`#1227`](https://github.com/yorukot/superfile/pull/1227)
+- Fix flaky tests [`#1233`](https://github.com/yorukot/superfile/pull/1233)
+- modal confirmation bug with arrow keys [`#1243`](https://github.com/yorukot/superfile/pull/1243)
+- small file panel optimization [`#1241`](https://github.com/yorukot/superfile/pull/1241)
+- use ExtractOperationMsg for extraction [`#1248`](https://github.com/yorukot/superfile/pull/1248)
+- skip open_with from missing field validation [`#1251`](https://github.com/yorukot/superfile/pull/1251)
+- border height validation fixes [`#1267`](https://github.com/yorukot/superfile/pull/1267)
+- fix case with two active panes [`#1271`](https://github.com/yorukot/superfile/pull/1271)
+- help model formatting [`#1277`](https://github.com/yorukot/superfile/pull/1277)
+
+#### Optimization
+
+- simplify renameIfDuplicate logic [`#1100`](https://github.com/yorukot/superfile/pull/1100)
+- separate FilePanel into dedicated package [`#1195`](https://github.com/yorukot/superfile/pull/1195)
+- File model separation [`#1223`](https://github.com/yorukot/superfile/pull/1223)
+- Dimension validations [`#1224`](https://github.com/yorukot/superfile/pull/1224)
+- layout validation and sidebar dimension fixes [`#1228`](https://github.com/yorukot/superfile/pull/1228)
+- user rendering package and removal of unused preview code [`#1245`](https://github.com/yorukot/superfile/pull/1245)
+- user rendering package for file preview [`#1249`](https://github.com/yorukot/superfile/pull/1249)
+
+#### Documentation
+
+- update Fish shell setup docs [`#1142`](https://github.com/yorukot/superfile/pull/1142)
+- fix macOS typo [`#1212`](https://github.com/yorukot/superfile/pull/1212)
+- stylistic and linguistic cleanup of config documentation [`#1184`](https://github.com/yorukot/superfile/pull/1184)
+
+#### Dependencies
+
+- update astro monorepo [`#1010`](https://github.com/yorukot/superfile/pull/1010)
+- update starlight-giscus [`#1020`](https://github.com/yorukot/superfile/pull/1020)
+- bump astro versions [`#1138`](https://github.com/yorukot/superfile/pull/1138), [`#1157`](https://github.com/yorukot/superfile/pull/1157), [`#1158`](https://github.com/yorukot/superfile/pull/1158)
+- bump vite [`#1134`](https://github.com/yorukot/superfile/pull/1134)
+- update setup-go action [`#1038`](https://github.com/yorukot/superfile/pull/1038)
+- update expressive-code plugins [`#1189`](https://github.com/yorukot/superfile/pull/1189), [`#1246`](https://github.com/yorukot/superfile/pull/1246)
+- update sharp [`#1256`](https://github.com/yorukot/superfile/pull/1256)
+- update fontsource monorepo [`#1257`](https://github.com/yorukot/superfile/pull/1257)
+- update urfave/cli [`#1136`](https://github.com/yorukot/superfile/pull/1136), [`#1190`](https://github.com/yorukot/superfile/pull/1190)
+- update astro / starlight / ansi / toolchain deps [`#1275`](https://github.com/yorukot/superfile/pull/1275), [`#1278`](https://github.com/yorukot/superfile/pull/1278), [`#1280`](https://github.com/yorukot/superfile/pull/1280)
+- update python and go versions [`#1276`](https://github.com/yorukot/superfile/pull/1276), [`#1191`](https://github.com/yorukot/superfile/pull/1191)
+- update golangci-lint action [`#1286`](https://github.com/yorukot/superfile/pull/1286)
+
+#### Misc
+
+- update CI input names [`#1120`](https://github.com/yorukot/superfile/pull/1120)
+- Everforest Dark Hard theme [`#1114`](https://github.com/yorukot/superfile/pull/1114)
+- migrate tutorial demo assets to local [`#1140`](https://github.com/yorukot/superfile/pull/1140)
+- new logo asset [`#1145`](https://github.com/yorukot/superfile/pull/1145)
+- mirror repository to codeberg [`#1141`](https://github.com/yorukot/superfile/pull/1141)
+- sync package lock [`#1143`](https://github.com/yorukot/superfile/pull/1143)
+- bump golangci-lint version [`#1135`](https://github.com/yorukot/superfile/pull/1135)
+- add gosec linter [`#1185`](https://github.com/yorukot/superfile/pull/1185)
+- enable MND linter and clean magic numbers [`#1180`](https://github.com/yorukot/superfile/pull/1180)
+- skip permission tests when running as root [`#1186`](https://github.com/yorukot/superfile/pull/1186)
+- release v1.4.1-rc [`#1203`](https://github.com/yorukot/superfile/pull/1203)
+- 1.5.0-rc1 housekeeping changes [`#1264`](https://github.com/yorukot/superfile/pull/1264)
+
 # [**v1.4.0**](https://github.com/yorukot/superfile/releases/tag/v1.4.0)
 
 > 2025-10-10
 
 #### Update
+
 - feat: File operation via tea cmd by [`#963`](https://github.com/yorukot/superfile/pull/963)
 - feat: processbar improvements, package separation, better channel management by [`#970`](https://github.com/yorukot/superfile/pull/970)
 - feat: processbar improvements, package separation, better channel management by [`#973`](https://github.com/yorukot/superfile/pull/973)
@@ -33,6 +201,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - feat: Async zoxide by [`#1104`](https://github.com/yorukot/superfile/pull/1104)
 
 #### Bug Fix
+
 - fix: sorting in searchbar by [`#985`](https://github.com/yorukot/superfile/pull/985)
 - fix: Async rendering, Include clipboard check in paste items, and update linter configs by [`#997`](https://github.com/yorukot/superfile/pull/997)
 - fix: Move utility functions to utils package by [`#1012`](https://github.com/yorukot/superfile/pull/1012)
@@ -52,15 +221,18 @@ All notable changes to this project will be documented in this file. Dates are d
 - fix: check and fix file panel scroll position on height changes by [`#1095`](https://github.com/yorukot/superfile/pull/1095)
 
 #### Optimization
+
 - perf(website): optimize font loading and asset organization by [`#1089`](https://github.com/yorukot/superfile/pull/1089)
 
 #### Documentation
+
 - docs: fix incorrect zoxide plugin config name by [`#1049`](https://github.com/yorukot/superfile/pull/1049)
 - docs(hotkeys): Fix typo in vimHotkeys.toml comments by [`#1080`](https://github.com/yorukot/superfile/pull/1080)
 - docs: add section for core maintainers in README.md by [`#1088`](https://github.com/yorukot/superfile/pull/1088)
 - chore: add winget install instruction to readme and website by [`#943`](https://github.com/yorukot/superfile/pull/943)
 
 #### Dependencies
+
 - chore(deps): update dependency go to v1.25.0, golangci-lint to v2, golangci-lint actions to v8 by [`#750`](https://github.com/yorukot/superfile/pull/750)
 - chore(deps): update amannn/action-semantic-pull-request action to v6 by [`#1006`](https://github.com/yorukot/superfile/pull/1006)
 - chore(deps): update actions/first-interaction action to v3 by [`#1005`](https://github.com/yorukot/superfile/pull/1005)
@@ -77,26 +249,29 @@ All notable changes to this project will be documented in this file. Dates are d
 - fix(deps): update module golang.org/x/text to v0.28.0 by [`#1003`](https://github.com/yorukot/superfile/pull/1003)
 
 #### Misc
+
 - chore: migrate from superfile.netlify.app to superfile.dev by [`#1087`](https://github.com/yorukot/superfile/pull/1087)
 - refactor(filepanel): replace filePanelFocusType with isFocused boolean by [`#1040`](https://github.com/yorukot/superfile/pull/1040)
 - refactor(ansi): Migrate from github.com/charmbracelet/x/exp/term/ansi to github.com/charmbracelet/x/ansi by [`#1044`](https://github.com/yorukot/superfile/pull/1044)
 - refactor: common operation on pinned directory file using PinnedManager by [`#1085`](https://github.com/yorukot/superfile/pull/1085)
 - test: unit tests for pinned manager by [`#1090`](https://github.com/yorukot/superfile/pull/1090)
 
-
 # [**v1.3.3**](https://github.com/yorukot/superfile/releases/tag/v1.3.3)
 
 > 2025-07-25
 
 #### Update
+
 - feat: Metadata loading via bubbletea's tea.Cmd method, removed usage channels and custom goroutines by [`#947`](https://github.com/yorukot/superfile/pull/947)
 - feat: Metadata panel into separate package, UI bug fixes, Code improvements[`#950`](https://github.com/yorukot/superfile/pull/950)
 
 #### Bug Fix
+
 - fix: windows test ci by [`#941`](https://github.com/yorukot/superfile/pull/941)
 - fix: fixing `config.toml` by [`#952`](https://github.com/yorukot/superfile/pull/952)
 
 #### Misc
+
 - chore: update pnpm-lcok.yaml by [`#937`](https://github.com/yorukot/superfile/pull/937)
 - feat: add support for Python virtual environment in testsuite setup[`#956`](https://github.com/yorukot/superfile/pull/956)
 
@@ -105,6 +280,7 @@ All notable changes to this project will be documented in this file. Dates are d
 > 2025-07-16
 
 #### Update
+
 - Normalize user-facing naming to superfile [`#880`](https://github.com/yorukot/superfile/pull/880)
 - Add kitty protocol for image preview [`#841`](https://github.com/yorukot/superfile/pull/841)
 - feat: add Zoxide support for path resolution in initial configuration [`#892`](https://github.com/yorukot/superfile/pull/892)
@@ -115,6 +291,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - Theme: add 0x96f theme [`#860`](https://github.com/yorukot/superfile/pull/860)
 
 #### Bug fix
+
 - fix: outdated and broken nix flake [`#846`](https://github.com/yorukot/superfile/pull/846)
 - fix: handle UTF-8 BOM in file reader [`#865`](https://github.com/yorukot/superfile/pull/865)
 - fix icon displayed on spf prompt when nerdfont disabled [`#878`](https://github.com/yorukot/superfile/pull/878)
@@ -127,11 +304,13 @@ All notable changes to this project will be documented in this file. Dates are d
 - fix: Dont read special files, and prevent freeze [`#932`](https://github.com/yorukot/superfile/pull/932)
 
 #### Optimization
+
 - Metadata and filepanel rendering refactor [`#867`](https://github.com/yorukot/superfile/pull/867)
 - refactor: simplify panel mode handling in file movement logic [`#907`](https://github.com/yorukot/superfile/pull/907)
 - refactor: standardize TODO comments and ReadMe to README [`#913`](https://github.com/yorukot/superfile/pull/913)
 
 #### Documentation
+
 - enhance: add detailed documentation for InitIcon function and update … [`#879`](https://github.com/yorukot/superfile/pull/879)
 - docs: add documentation for image preview [`#882`](https://github.com/yorukot/superfile/pull/882)
 - docs: update contributing guide and PR template [`#885`](https://github.com/yorukot/superfile/pull/885)
@@ -139,10 +318,12 @@ All notable changes to this project will be documented in this file. Dates are d
 - feat(docs): Update arch install package docs [`#929`](https://github.com/yorukot/superfile/pull/929)
 
 #### CI/CD
+
 - ci: add PR title linting with semantic-pull-request action [`#884`](https://github.com/yorukot/superfile/pull/884)
 - ci: improve PR workflows with contributor greeting and title linter fix [`#886`](https://github.com/yorukot/superfile/pull/886)
 
 #### Dependencies
+
 - build(deps): bump prismjs from 1.29.0 to 1.30.0 in /website [`#786`](https://github.com/yorukot/superfile/pull/786)
 - fix(deps): update dependency astro to v5.8.0 [`#787`](https://github.com/yorukot/superfile/pull/787)
 - chore(deps): bump vite from 6.3.3 to 6.3.5 in /website [`#822`](https://github.com/yorukot/superfile/pull/822)
@@ -151,10 +332,10 @@ All notable changes to this project will be documented in this file. Dates are d
 - fix(deps): update fontsource monorepo to v5.2.6 [`#910`](https://github.com/yorukot/superfile/pull/910)
 
 #### Misc
+
 - chore(license): update copyright year [`#895`](https://github.com/yorukot/superfile/pull/895)
 - feat: add ignore missing field flag [`#881`](https://github.com/yorukot/superfile/pull/881)
 - feat: add sitemap integration and update giscus input position [`#912`](https://github.com/yorukot/superfile/pull/912)
-
 
 # [**v1.3.1**](https://github.com/yorukot/superfile/releases/tag/v1.3.1)
 
@@ -168,7 +349,7 @@ All notable changes to this project will be documented in this file. Dates are d
 #### Bug Fixes
 
 - Correct icons for clipboard files [`#845`](https://github.com/yorukot/superfile/pull/845)
-- Replace mattn/rundwidth with ansi package for more robust StringWidth [`#848`](https://github.com/yorukot/superfile/pull/848)  
+- Replace mattn/rundwidth with ansi package for more robust StringWidth [`#848`](https://github.com/yorukot/superfile/pull/848)
 - Purego package update [`#837`](https://github.com/yorukot/superfile/pull/837)
 
 #### Optimization
@@ -212,12 +393,12 @@ All notable changes to this project will be documented in this file. Dates are d
 - Linter fixes, new feature of allowing multiple directories at startup, other code improvements [`#764`](https://github.com/yorukot/superfile/pull/764)
 - Model unit tests [`#803`](https://github.com/yorukot/superfile/pull/803)
 
-
 # [**v1.2.1**](https://github.com/yorukot/superfile/releases/tag/v1.2.1)
 
 > 2025-03-26
 
 #### Update
+
 - Add show_image_preview flag [`#728`](https://github.com/yorukot/superfile/pull/728)
 - Allow specifying directory icon color in theme files [`#709`](https://github.com/yorukot/superfile/pull/709)
 - --hotkey-file flag and fix in configFileFlag [`#700`](https://github.com/yorukot/superfile/pull/700)
@@ -225,16 +406,19 @@ All notable changes to this project will be documented in this file. Dates are d
 - Monokai Theme [`#673`](https://github.com/yorukot/superfile/pull/673)
 
 #### Bug fix
+
 - Fix broken link in website causing 404 [`#714`](https://github.com/yorukot/superfile/pull/714)
 - Fix sidebar disk listing [`#708`](https://github.com/yorukot/superfile/pull/708)
 - Switch to semver for newer 1.2.1 release [`#687`](https://github.com/yorukot/superfile/pull/687)
 
 #### Optimization
+
 - Fix: icon consts [`#719`](https://github.com/yorukot/superfile/pull/719)
 - Refactor and unit tests for scrolling [`#710`](https://github.com/yorukot/superfile/pull/710)
 - Refactor of wheel functions [`#695`](https://github.com/yorukot/superfile/pull/695)
 
 #### Documentation
+
 - Add info about auto update [`#721`](https://github.com/yorukot/superfile/pull/721)
 - add cd_on_quit for fish shell [`#696`](https://github.com/yorukot/superfile/pull/696)
 - Add Pixi installation instructions [`#690`](https://github.com/yorukot/superfile/pull/690)
@@ -244,6 +428,7 @@ All notable changes to this project will be documented in this file. Dates are d
 > 2025-03-05
 
 #### Update
+
 - Added direnv support for nix flake dev shell [`#568`](https://github.com/yorukot/superfile/pull/568)
 - Move rename cursor to start before the extension [`#565`](https://github.com/yorukot/superfile/pull/565)
 - Renaming feature for pinned directories [`#579`](https://github.com/yorukot/superfile/pull/579)
@@ -258,6 +443,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - Update README.md and added a Run the app title [`#550`](https://github.com/yorukot/superfile/pull/550)
 
 #### Bug fix
+
 - Fix sort options hotkey [`#548`](https://github.com/yorukot/superfile/pull/548)
 - Fix wrong log line, Fatalln was used with formatting verbs [`#555`](https://github.com/yorukot/superfile/pull/555)
 - Fix incorrect failure reporting in delete operation [`#558`](https://github.com/yorukot/superfile/pull/558)
@@ -274,17 +460,19 @@ All notable changes to this project will be documented in this file. Dates are d
 - Fix discrete timeout for HTTP get version [`#632`](https://github.com/yorukot/superfile/pull/632)
 - Fix initial pinned.json having invalid JSON [`#652`](https://github.com/yorukot/superfile/pull/652)
 - Fix loadConfigFile and loadHotkeysFile functions [`#650`](https://github.com/yorukot/superfile/pull/650)
-- Fix issue when trying to extract a file with .zip_ extension [`#636`](https://github.com/yorukot/superfile/pull/636)
+- Fix issue when trying to extract a file with .zip\_ extension [`#636`](https://github.com/yorukot/superfile/pull/636)
 - Fix openFileWithEditor bug [`#635`](https://github.com/yorukot/superfile/pull/635)
 - Fix partial overwrite issue by ensuring full file rewrite [`#665`](https://github.com/yorukot/superfile/pull/665)
 
 #### Optimization
+
 - Improving file panel rendering [`#589`](https://github.com/yorukot/superfile/pull/589)
 - Improve formatting, error handling, and fix typos [`#600`](https://github.com/yorukot/superfile/pull/600)
 - Go formatting fixes [`#618`](https://github.com/yorukot/superfile/pull/618)
 - Testsuite in GitHub Actions [`#602`](https://github.com/yorukot/superfile/pull/602)
 
 #### Documentation
+
 - Revert changes in website that were not yet released [`#611`](https://github.com/yorukot/superfile/pull/611)
 - Docs contribute [`#610`](https://github.com/yorukot/superfile/pull/610)
 - Remove godocs badge [`#627`](https://github.com/yorukot/superfile/pull/627)
@@ -298,6 +486,7 @@ All notable changes to this project will be documented in this file. Dates are d
 NOTE: This release is a hotfix to resolve an unusual issue on Windows.
 
 #### Bug fix
+
 - Fix can't run on windows [`#534`](https://github.com/yorukot/superfile/issues/534)
 
 # [**v1.1.7**](https://github.com/yorukot/superfile/releases/tag/v1.1.7)
@@ -314,6 +503,7 @@ NOTE: This release is a hotfix to resolve an unusual issue on Windows.
 - Edit superfile config [`#509`](https://github.com/yorukot/superfile/pull/509)
 
 #### Bug fix
+
 - Fix rendering directory symlinks as directories, not files [`#481`](https://github.com/yorukot/superfile/pull/481)
 - Fix opening files on Windows [`#496`](https://github.com/yorukot/superfile/pull/496)
 - Fix lag in dotfile toggle with multiple panels [`#499`](https://github.com/yorukot/superfile/pull/499)
@@ -325,6 +515,7 @@ NOTE: This release is a hotfix to resolve an unusual issue on Windows.
 - Fix typo in welcome message [`#494`](https://github.com/yorukot/superfile/pull/494)
 
 #### Optimization
+
 - Optimize file move operation [`#522`](https://github.com/yorukot/superfile/pull/522)
 - Optimize file extraction [`#524`](https://github.com/yorukot/superfile/pull/524)
 - Warn overwrite when renaming files [`#526`](https://github.com/yorukot/superfile/pull/526)
@@ -335,11 +526,13 @@ NOTE: This release is a hotfix to resolve an unusual issue on Windows.
 > 2024-11-21
 
 #### Update
+
 - Add sort case toggle [`#469`](https://github.com/yorukot/superfile/issues/469)
 - Add Sort options [`#420`](https://github.com/yorukot/superfile/pull/420)
 - Fix flashing when switching between panels [`#122`](https://github.com/yorukot/superfile/issues/122)
 
 #### Bug fix
+
 - Fix some hotkey broken
 - Fix the searchbar to automatically put the open key into the searchbar [`ec9e256`](https://github.com/yorukot/superfile/commit/b20bc70fe9d4e0ee96931092a6522e8604cc017b)
 
@@ -348,6 +541,7 @@ NOTE: This release is a hotfix to resolve an unusual issue on Windows.
 > 2024-10-03
 
 #### Update
+
 - Stop automatically updating config file. Add fix-hotkeys flag, feedback for missing hotkeys [`#333`](https://github.com/yorukot/superfile/issues/333)
 - Update installation.md: Add x-cmd method to install superfile [`#371`](https://github.com/yorukot/superfile/issues/333)
 - Added option to change default editor [`#396`](https://github.com/yorukot/superfile/pull/396)
@@ -355,6 +549,7 @@ NOTE: This release is a hotfix to resolve an unusual issue on Windows.
 - shortcut to copy path to currently selected file [`#196`](https://github.com/yorukot/superfile/issues/196)
 
 #### Bug fix
+
 - fixed typo in hotkeys.toml [`#341`](https://github.com/yorukot/superfile/issues/341)
 - Fixes issue #360 + Typo fixes by [`#379`](https://github.com/yorukot/superfile/pull/379)
 - fixed spelling mistake : varibale to variable [`#394`](https://github.com/yorukot/superfile/pull/394)
@@ -370,6 +565,7 @@ NOTE: This release is a hotfix to resolve an unusual issue on Windows.
 > 2024-08-01
 
 #### Update
+
 - Added option to change default directory [`#211`](https://github.com/yorukot/superfile/issues/211)
 - Added quotes around dir in lastdir to support special characters [`#218`](https://github.com/yorukot/superfile/pull/218)
 - Make Hotkey settings unlimited [`423a96a`](https://github.com/yorukot/superfile/commit/423a96a0aeca4ea2c30447d8b4010868045bb7e8)
@@ -382,6 +578,7 @@ NOTE: This release is a hotfix to resolve an unusual issue on Windows.
 - An option to display the filesize in decimal or binary sizes [`#220`](https://github.com/yorukot/superfile/issues/220)
 
 #### Bug fix
+
 - An option to display the filesize in decimal or binary sizes [`#220`](https://github.com/yorukot/superfile/issues/220)
 - Fix Transparent Background issue [`#76`](https://github.com/yorukot/superfile/issues/76)
 - Big text file makes the program freeze for a while [`#255`](https://github.com/yorukot/superfile/issues/255)
@@ -392,6 +589,7 @@ NOTE: This release is a hotfix to resolve an unusual issue on Windows.
 > 2024-05-26
 
 #### Update
+
 - Update print path list [`37c8864`](https://github.com/yorukot/superfile/commit/37c8864eb2b0dc73fbf8928dd40b3b7573e9a11dw)
 - Make theme files embed [`0f53a12`](https://github.com/yorukot/superfile/commit/7fa775dd7db175fef694e514bd77ebd75c801fae)
 - Disable update check via config [`#131`](https://github.com/yorukot/superfile/issues/131)
@@ -404,9 +602,10 @@ NOTE: This release is a hotfix to resolve an unusual issue on Windows.
 - Support directory preview [`#26`](https://github.com/yorukot/superfile/issues/26)
 - Improve mouse scrolling delay [`f734292`](https://github.com/yorukot/superfile/commit/f7342921d49d87f1bc633c9f8e19fe6845fbbf26)
 - Support image preview with ansi [`#26`](https://github.com/yorukot/superfile/issues/26)
-- Clear search after opening directory  [`#146`](https://github.com/yorukot/superfile/issues/146)
+- Clear search after opening directory [`#146`](https://github.com/yorukot/superfile/issues/146)
 
 #### Bug fix
+
 - Recursive symlink crashes superfile [`#109`](https://github.com/yorukot/superfile/issues/109)
 - Timemachine snapshots listed in Disks section [`#126`](https://github.com/yorukot/superfile/issues/126)
 - There will be a bug in the layout under a specific terminal height [`#105`](https://github.com/yorukot/superfile/issues/105)
@@ -418,6 +617,7 @@ NOTE: This release is a hotfix to resolve an unusual issue on Windows.
 > 2024-05-08
 
 #### Update
+
 - Update help menu [`#75`](https://github.com/yorukot/superfile/issues/75)
 - Update all modal, make other panel still show on background [`#79`](https://github.com/yorukot/superfile/pull/79)
 - Support extract gz tar file [`b9aed84`](https://github.com/yorukot/superfile/commit/b9aed847804421e1fc4f03dcaefb0e27f1260ea3)
@@ -428,6 +628,7 @@ NOTE: This release is a hotfix to resolve an unusual issue on Windows.
 - Update XDG_CACHE to XDG_STATE_HOME [`#90`](https://github.com/yorukot/superfile/issues/90)
 
 #### Bug fix
+
 - Fix Cut -> Paste file causes go panic [`#77`](https://github.com/yorukot/superfile/issues/77)
 - Fix symlinked folders don't open within superfile [`#88`](https://github.com/yorukot/superfile/issues/88)
 
@@ -436,10 +637,12 @@ NOTE: This release is a hotfix to resolve an unusual issue on Windows.
 > 2024-04-23
 
 #### Update
+
 - Open directory with default application [`#33`](https://github.com/yorukot/superfile/issues/33)
 - Auto update config file if missing config [`1498c92`](https://github.com/yorukot/superfile/commit/1498c92d2166c8c25989be9ce5a15dc6d1ffb073)
 
 #### Bug fix
+
 - key `l` deletes files in macOS [`#72`](https://github.com/yorukot/superfile/issues/72)
 
 # [**v1.1.0**](https://github.com/yorukot/superfile/releases/tag/v1.1.0)

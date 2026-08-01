@@ -3,17 +3,87 @@ package internal
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/yorukot/superfile/src/pkg/utils"
 
 	"github.com/yorukot/superfile/src/internal/ui/filepanel"
 
 	"github.com/yorukot/superfile/src/internal/common"
 	"github.com/yorukot/superfile/src/internal/ui/processbar"
-	"github.com/yorukot/superfile/src/internal/utils"
 )
+
+func TestCopyPath(t *testing.T) {
+	curTestDir := t.TempDir()
+	dir1 := filepath.Join(curTestDir, "dir1")
+	file1 := filepath.Join(curTestDir, "file1.txt")
+	file2 := filepath.Join(curTestDir, "file2.txt")
+
+	utils.SetupDirectories(t, curTestDir, dir1)
+	utils.SetupFiles(t, file1, file2)
+
+	var copiedText string
+	captureClipboard := func(m *model) {
+		m.clipboardWriter = func(text string) error {
+			copiedText = text
+			return nil
+		}
+	}
+
+	t.Run("Browser Mode Copy Focused Item Path", func(t *testing.T) {
+		copiedText = ""
+		m := defaultTestModel(curTestDir)
+		captureClipboard(m)
+		setFilePanelSelectedItemByLocation(t, m.getFocusedFilePanel(), file1)
+
+		TeaUpdate(m, utils.TeaRuneKeyMsg(common.Hotkeys.CopyPath[0]))
+
+		assert.Equal(t, file1, copiedText)
+	})
+
+	t.Run("Select Mode Copy Selected Item Paths", func(t *testing.T) {
+		copiedText = ""
+		m := defaultTestModel(curTestDir)
+		captureClipboard(m)
+		panel := m.getFocusedFilePanel()
+		panel.ChangeFilePanelMode()
+		panel.SetSelected(file2)
+		panel.SetSelected(file1)
+		setFilePanelSelectedItemByLocation(t, panel, dir1)
+
+		TeaUpdate(m, utils.TeaRuneKeyMsg(common.Hotkeys.CopyPath[0]))
+
+		assert.Equal(t, strings.Join([]string{file1, file2}, "\n"), copiedText)
+	})
+
+	t.Run("Select Mode Without Selection Copies Focused Item Path", func(t *testing.T) {
+		copiedText = ""
+		m := defaultTestModel(curTestDir)
+		captureClipboard(m)
+		panel := m.getFocusedFilePanel()
+		panel.ChangeFilePanelMode()
+		setFilePanelSelectedItemByLocation(t, panel, file2)
+
+		TeaUpdate(m, utils.TeaRuneKeyMsg(common.Hotkeys.CopyPath[0]))
+
+		assert.Equal(t, file2, copiedText)
+	})
+
+	t.Run("Empty Panel Does Not Copy", func(t *testing.T) {
+		copiedText = ""
+		m := defaultTestModel(t.TempDir())
+		captureClipboard(m)
+
+		TeaUpdate(m, utils.TeaRuneKeyMsg(common.Hotkeys.CopyPath[0]))
+
+		assert.Empty(t, copiedText)
+	})
+}
 
 func TestCompressSelectedFiles(t *testing.T) {
 	curTestDir := t.TempDir()
@@ -105,9 +175,11 @@ func TestCompressSelectedFiles(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			m := defaultTestModel(tt.startDir)
 			p := NewTestTeaProgWithEventLoop(t, m)
-			require.Greater(t, len(m.getFocusedFilePanel().Element), tt.cursor)
+			require.Greater(t, m.getFocusedFilePanel().ElemCount(), tt.cursor)
 			// Update cursor
-			m.getFocusedFilePanel().Cursor = tt.cursor
+			for range tt.cursor {
+				m.getFocusedFilePanel().ListDown()
+			}
 
 			require.Equal(t, filepanel.BrowserMode, m.getFocusedFilePanel().PanelMode)
 			if tt.selectMode {
@@ -140,18 +212,8 @@ func TestCompressSelectedFiles(t *testing.T) {
 
 			// Setup cleanup to run even if test fails
 			t.Cleanup(func() {
-				cleanupWithRetry := func(path, label string) {
-					var lastErr error
-					ok := assert.Eventually(t, func() bool {
-						lastErr = os.RemoveAll(path)
-						return lastErr == nil
-					}, DefaultTestTimeout, DefaultTestTick)
-					if !ok {
-						t.Fatalf("Failed to remove %s %q: %v", label, path, lastErr)
-					}
-				}
-				cleanupWithRetry(extractedDir, "extracted directory")
-				cleanupWithRetry(zipFile, "zip file")
+				cleanupWithRetry(t, extractedDir, "extracted directory")
+				cleanupWithRetry(t, zipFile, "zip file")
 			})
 			assert.Eventually(t, func() bool {
 				for _, f := range tt.expectedFilesAfterExtract {
@@ -263,7 +325,13 @@ func TestPasteItem(t *testing.T) {
 			if tt.shouldPreventPaste {
 				verifyPreventedPasteResults(t, m, originalPath)
 			} else {
-				verifySuccessfulPasteResults(t, tt.targetDir, tt.expectedDestFiles, originalPath, tt.shouldOriginalExist)
+				verifySuccessfulPasteResults(
+					t,
+					tt.targetDir,
+					tt.expectedDestFiles,
+					originalPath,
+					tt.shouldOriginalExist,
+				)
 			}
 			// Checking separately, as this is something independent of tt.shouldPreventPaste
 			if tt.shouldClipboardClear {
@@ -396,4 +464,76 @@ func ensureOneProcessDone(t *testing.T, m *model) {
 		processes := m.processBarModel.GetProcessesSlice()
 		return len(processes) == 1 && processes[0].State == processbar.Successful
 	}, DefaultTestTimeout, DefaultTestTick, "Compress process not done")
+}
+
+// Duct tape to have less flaky tests in windows
+func cleanupWithRetry(t *testing.T, path, label string) {
+	var lastErr error
+	ok := assert.Eventually(t, func() bool {
+		lastErr = os.RemoveAll(path)
+		return lastErr == nil
+	}, DefaultTestTimeout, DefaultTestTick)
+	if !ok {
+		t.Fatalf("Failed to remove %s %q: %v", label, path, lastErr)
+	}
+}
+
+func TestRunFileProcessorMutex(t *testing.T) {
+	t.Run("The mutex mutexErrorModal must be locked before run processor ", func(t *testing.T) {
+		m := prepareLockUnlockTest(t)
+		finalizer := func(state processbar.ProcessState, reqID int) tea.Msg { return NewDeleteOperationMsg(state, reqID) }
+		processor := func(items []string) (processbar.Process, []string) {
+			assert.False(t, m.mutexErrorModal.TryLock())
+			return processbar.NewProcess("1", "test", processbar.OpCopy, 10), []string{}
+		}
+		_ = m.runFileProcessor(processor, finalizer, []string{"file1", "file2"}, 1)
+	})
+
+	t.Run("The mutex mutexErrorModal must be unlocked after successful processing. We can see new Error modal window",
+		func(t *testing.T) {
+			m := prepareLockUnlockTest(t)
+			finalizer := func(state processbar.ProcessState, reqID int) tea.Msg { return NewDeleteOperationMsg(state, reqID) }
+			processor := func(items []string) (processbar.Process, []string) {
+				assert.False(t, m.mutexErrorModal.TryLock())
+				process := processbar.NewProcess("1", "test", processbar.OpCopy, 10)
+				process.State = processbar.Successful
+				return process, []string{}
+			}
+			result := m.runFileProcessor(processor, finalizer, []string{"file1", "file2"}, 1)
+			_, ok := result.(DeleteOperationMsg)
+			assert.True(t, ok)
+			assert.True(t, m.mutexErrorModal.TryLock())
+		})
+
+	t.Run("Failed processing. we have todo files. mutexErrorModal must be locked. Waits user choice",
+		func(t *testing.T) {
+			m := prepareLockUnlockTest(t)
+			finalizer := func(state processbar.ProcessState, reqID int) tea.Msg { return NewDeleteOperationMsg(state, reqID) }
+			processor := func(items []string) (processbar.Process, []string) {
+				assert.False(t, m.mutexErrorModal.TryLock())
+				process := processbar.NewProcess("1", "test", processbar.OpCopy, 10)
+				process.State = processbar.Failed
+				return process, []string{"test1"}
+			}
+			result := m.runFileProcessor(processor, finalizer, []string{"file1", "file2"}, 1)
+			_, ok := result.(SpfErrorModalUpdateMsg)
+			assert.True(t, ok)
+			assert.False(t, m.mutexErrorModal.TryLock())
+		})
+
+	t.Run("The mutex mutexErrorModal must be unlocked after failed processing, when we haven't todo files",
+		func(t *testing.T) {
+			m := prepareLockUnlockTest(t)
+			finalizer := func(state processbar.ProcessState, reqID int) tea.Msg { return NewDeleteOperationMsg(state, reqID) }
+			processor := func(items []string) (processbar.Process, []string) {
+				assert.False(t, m.mutexErrorModal.TryLock())
+				process := processbar.NewProcess("1", "test", processbar.OpCopy, 10)
+				process.State = processbar.Failed
+				return process, []string{}
+			}
+			result := m.runFileProcessor(processor, finalizer, []string{"file1", "file2"}, 1)
+			_, ok := result.(DeleteOperationMsg)
+			assert.True(t, ok)
+			assert.True(t, m.mutexErrorModal.TryLock())
+		})
 }

@@ -1,17 +1,12 @@
 package internal
 
 import (
-	"fmt"
 	"path/filepath"
 	"strconv"
 
-	"github.com/yorukot/superfile/src/internal/ui"
-	"github.com/yorukot/superfile/src/internal/ui/rendering"
-	filepreview "github.com/yorukot/superfile/src/pkg/file_preview"
-
 	"github.com/yorukot/superfile/src/internal/common"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/yorukot/superfile/src/config/icon"
 )
@@ -40,12 +35,12 @@ func (m *model) terminalSizeWarnRender() string {
 	fullWidthString = common.TerminalCorrectSize.Render(fullWidthString)
 
 	heightString := common.MainStyle.Render(" Height = ")
-	return common.FullScreenStyle(m.fullHeight, m.fullWidth).Render(`Terminal size too small:`+"\n"+
-		"Width = "+fullWidthString+
-		heightString+fullHeightString+"\n\n"+
-		"Needed for current config:"+"\n"+
-		"Width = "+common.TerminalCorrectSize.Render(minimumWidthString)+
-		heightString+common.TerminalCorrectSize.Render(minimumHeightString)) + filepreview.ClearKittyImages()
+	return common.FullScreenStyle(m.fullHeight, m.fullWidth).Render(`Terminal size too small:` + "\n" +
+		"Width = " + fullWidthString +
+		heightString + fullHeightString + "\n\n" +
+		"Needed for current config:" + "\n" +
+		"Width = " + common.TerminalCorrectSize.Render(minimumWidthString) +
+		heightString + common.TerminalCorrectSize.Render(minimumHeightString))
 }
 
 func (m *model) terminalSizeWarnAfterFirstRender() string {
@@ -67,12 +62,12 @@ func (m *model) terminalSizeWarnAfterFirstRender() string {
 	fullWidthString = common.TerminalCorrectSize.Render(fullWidthString)
 
 	heightString := common.MainStyle.Render(" Height = ")
-	return common.FullScreenStyle(m.fullHeight, m.fullWidth).Render(`You change your terminal size too small:`+"\n"+
-		"Width = "+fullWidthString+
-		heightString+fullHeightString+"\n\n"+
-		"Needed for current config:"+"\n"+
-		"Width = "+common.TerminalCorrectSize.Render(minimumWidthString)+
-		heightString+common.TerminalCorrectSize.Render(minimumHeightString)) + filepreview.ClearKittyImages()
+	return common.FullScreenStyle(m.fullHeight, m.fullWidth).Render(`Your terminal size is too small:` + "\n" +
+		"Width = " + fullWidthString +
+		heightString + fullHeightString + "\n\n" +
+		"Needed for current config:" + "\n" +
+		"Width = " + common.TerminalCorrectSize.Render(minimumWidthString) +
+		heightString + common.TerminalCorrectSize.Render(minimumHeightString))
 }
 
 func (m *model) typineModalRender() string {
@@ -90,13 +85,9 @@ func (m *model) typineModalRender() string {
 		lipgloss.NewStyle().Background(common.ModalBGColor).Render("           ") +
 		cancel
 
-	var err string
-	if m.typingModal.errorMesssage != "" {
-		err = "\n\n" + common.ModalErrorStyle.Render(m.typingModal.errorMesssage)
-	}
 	// TODO : Move this all to rendering package to avoid specifying newlines manually
 	return common.ModalBorderStyle(common.ModalHeight, common.ModalWidth).
-		Render(fileLocation + "\n" + m.typingModal.textInput.View() + "\n\n" + tip + err)
+		Render(fileLocation + "\n" + m.typingModal.textInput.View() + "\n\n" + tip)
 }
 
 func (m *model) introduceModalRender() string {
@@ -119,7 +110,7 @@ func (m *model) introduceModalRender() string {
 			"      https://github.com/yorukot/superfile\n"+
 			"      Of course, you can always open a new issue to share your idea \n"+
 			"      or report a bug!")
-	return common.FirstUseModal(m.helpMenu.height, m.helpMenu.width).
+	return common.FirstUseModal(m.helpMenu.GetHeight(), m.helpMenu.GetWidth()).
 		Render(title + "\n\n" + vimUserWarn + "\n\n" + subOne + "\n\n" +
 			subTwo + "\n\n" + subThree + "\n\n" + subFour + "\n\n")
 }
@@ -130,118 +121,4 @@ func (m *model) promptModalRender() string {
 
 func (m *model) zoxideModalRender() string {
 	return m.zoxideModal.Render()
-}
-
-func (m *model) helpMenuRender() string {
-	r := ui.HelpMenuRenderer(m.helpMenu.height, m.helpMenu.width)
-	r.AddLines(" " + m.helpMenu.searchBar.View())
-	r.AddLines("") // one-line separation between searchbar and content
-
-	// TODO : This computation should not happen at render time. Move this to update
-	// TODO : Move these computations to a utility function
-	maxKeyLength := 0
-	for _, data := range m.helpMenu.filteredData {
-		totalKeyLen := 0
-		for _, key := range data.hotkey {
-			totalKeyLen += len(key)
-		}
-
-		separatorLen := max(0, (len(data.hotkey)-1)) * common.FooterGroupCols
-		if data.subTitle == "" && totalKeyLen+separatorLen > maxKeyLength {
-			maxKeyLength = totalKeyLen + separatorLen
-		}
-	}
-
-	valueLength := m.helpMenu.width - maxKeyLength - common.BorderPadding
-	if valueLength < m.helpMenu.width/common.CenterDivisor {
-		valueLength = m.helpMenu.width/common.CenterDivisor - common.BorderPadding
-	}
-
-	totalTitleCount := 0
-	cursorBeenTitleCount := 0
-
-	for i, data := range m.helpMenu.filteredData {
-		if data.subTitle != "" {
-			if i < m.helpMenu.cursor {
-				cursorBeenTitleCount++
-			}
-			totalTitleCount++
-		}
-	}
-
-	renderHotkeyLength := m.getRenderHotkeyLengthHelpmenuModal()
-	m.getHelpMenuContent(r, renderHotkeyLength, valueLength)
-
-	current := m.helpMenu.cursor + 1 - cursorBeenTitleCount
-	if len(m.helpMenu.filteredData) == 0 {
-		current = 0
-	}
-	r.SetBorderInfoItems(fmt.Sprintf("%s/%s",
-		strconv.Itoa(current),
-		strconv.Itoa(len(m.helpMenu.filteredData)-totalTitleCount)))
-	return r.Render()
-}
-
-func (m *model) getRenderHotkeyLengthHelpmenuModal() int {
-	renderHotkeyLength := 0
-	for i := m.helpMenu.renderIndex; i < m.helpMenu.renderIndex+(m.helpMenu.height-common.InnerPadding) && i < len(m.helpMenu.filteredData); i++ {
-		hotkey := ""
-
-		if m.helpMenu.filteredData[i].subTitle != "" {
-			continue
-		}
-
-		for i, key := range m.helpMenu.filteredData[i].hotkey {
-			if i != 0 {
-				hotkey += " | "
-			}
-			hotkey += key
-		}
-
-		renderHotkeyLength = max(renderHotkeyLength, len(common.HelpMenuHotkeyStyle.Render(hotkey)))
-	}
-	return renderHotkeyLength
-}
-
-func (m *model) getHelpMenuContent(r *rendering.Renderer, renderHotkeyLength int, valueLength int) {
-	for i := m.helpMenu.renderIndex; i < m.helpMenu.renderIndex+(m.helpMenu.height-common.InnerPadding) && i < len(m.helpMenu.filteredData); i++ {
-		if m.helpMenu.filteredData[i].subTitle != "" {
-			r.AddLines(common.HelpMenuTitleStyle.Render(" " + m.helpMenu.filteredData[i].subTitle))
-			continue
-		}
-
-		hotkey := ""
-		description := common.TruncateText(m.helpMenu.filteredData[i].description, valueLength, "...")
-
-		for i, key := range m.helpMenu.filteredData[i].hotkey {
-			if i != 0 {
-				hotkey += " | "
-			}
-			hotkey += key
-		}
-
-		cursor := "  "
-		if m.helpMenu.cursor == i {
-			cursor = common.FilePanelCursorStyle.Render(icon.Cursor + " ")
-		}
-		r.AddLines(cursor + common.ModalStyle.Render(fmt.Sprintf("%*s%s", renderHotkeyLength,
-			common.HelpMenuHotkeyStyle.Render(hotkey+" "), common.ModalStyle.Render(description))))
-	}
-}
-
-func (m *model) sortOptionsRender() string {
-	panel := m.getFocusedFilePanel()
-	sortOptionsContent := common.ModalTitleStyle.Render(" Sort Options") + "\n\n"
-	for i, option := range panel.SortOptions.Data.Options {
-		cursor := " "
-		if i == panel.SortOptions.Cursor {
-			cursor = common.FilePanelCursorStyle.Render(icon.Cursor)
-		}
-		sortOptionsContent += cursor + common.ModalStyle.Render(" "+option) + "\n"
-	}
-	bottomBorder := common.GenerateFooterBorder(fmt.Sprintf("%s/%s", strconv.Itoa(panel.SortOptions.Cursor+1),
-		strconv.Itoa(len(panel.SortOptions.Data.Options))), panel.SortOptions.Width-common.BorderPadding)
-
-	return common.SortOptionsModalBorderStyle(panel.SortOptions.Height, panel.SortOptions.Width,
-		bottomBorder).Render(sortOptionsContent)
 }

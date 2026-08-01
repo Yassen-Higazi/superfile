@@ -9,8 +9,9 @@ import (
 
 	"github.com/barasher/go-exiftool"
 
+	"github.com/yorukot/superfile/src/pkg/utils"
+
 	"github.com/yorukot/superfile/src/internal/common"
-	"github.com/yorukot/superfile/src/internal/utils"
 )
 
 type Metadata struct {
@@ -124,6 +125,18 @@ func getMetaDataUnsorted(filePath string, metadataFocused bool, et *exiftool.Exi
 		size = [2]string{keySize, common.FormatFileSize(utils.DirSize(filePath))}
 	}
 	res.data = append(res.data, name, size, modifyDate, permissions, owner, group)
+
+	if attrVal, ok := getFileAttributes(filePath); ok {
+		attrs := [2]string{keyAttributes, attrVal}
+		res.data = append(res.data, attrs)
+	}
+
+	if fileInfo.Mode().IsRegular() {
+		if arch, err := GetBinaryArchitecture(filePath); err == nil {
+			archData := [2]string{keyArchitecture, arch}
+			res.data = append(res.data, archData)
+		}
+	}
 
 	updateExiftoolMetadata(filePath, et, &res)
 

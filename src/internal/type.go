@@ -1,9 +1,15 @@
 package internal
 
 import (
+	"sync"
+
 	zoxidelib "github.com/lazysegtree/go-zoxide"
 
+	"github.com/yorukot/superfile/src/internal/ui/helpmenu"
+	"github.com/yorukot/superfile/src/internal/ui/spferror"
+
 	"github.com/yorukot/superfile/src/internal/ui/clipboard"
+	"github.com/yorukot/superfile/src/internal/ui/sortmodel"
 
 	"github.com/yorukot/superfile/src/internal/ui/filemodel"
 
@@ -12,7 +18,7 @@ import (
 	"github.com/yorukot/superfile/src/internal/ui/processbar"
 	"github.com/yorukot/superfile/src/internal/ui/sidebar"
 
-	"github.com/charmbracelet/bubbles/textinput"
+	"charm.land/bubbles/v2/textinput"
 
 	"github.com/yorukot/superfile/src/internal/ui/prompt"
 	zoxideui "github.com/yorukot/superfile/src/internal/ui/zoxide"
@@ -21,15 +27,7 @@ import (
 // Type representing the type of focused panel
 type focusPanelType int
 
-type hotkeyType int
-
 type modelQuitStateType int
-
-const (
-	globalType hotkeyType = iota
-	normalType
-	selectType
-)
 
 // Constants for panel with no focus
 const (
@@ -58,24 +56,29 @@ type model struct {
 	sidebarModel    sidebar.Model
 	processBarModel processbar.Model
 	clipboard       clipboard.Model
+	clipboardWriter func(string) error
 	focusPanel      focusPanelType
 
 	// Modals
-	notifyModel notify.Model
-	typingModal typingModal
-	helpMenu    helpMenuModal
-	promptModal prompt.Model
-	zoxideModal zoxideui.Model
+	notifyModel     notify.Model
+	typingModal     typingModal
+	helpMenu        helpmenu.Model
+	promptModal     prompt.Model
+	zoxideModal     zoxideui.Model
+	sortModal       sortmodel.Model
+	spfError        spferror.Model
+	mutexErrorModal sync.Mutex
 
 	// Zoxide client for directory tracking
 	zClient *zoxidelib.Client
 
-	fileMetaData         metadata.Model
-	ioReqCnt             int
+	fileMetaData metadata.Model
+
+	// no use directly for increment, use nextIoReqCnt
+	ioReqCnt int32
+
 	modelQuitState       modelQuitStateType
 	firstTextInput       bool
-	toggleDotFile        bool
-	updatedToggleDotFile bool
 	toggleFooter         bool
 	firstLoadingComplete bool
 	firstUse             bool
@@ -97,30 +100,10 @@ type model struct {
 	hasTrash bool
 }
 
-// Modal
-type helpMenuModal struct {
-	height       int
-	width        int
-	open         bool
-	renderIndex  int
-	cursor       int
-	data         []helpMenuModalData
-	filteredData []helpMenuModalData
-	searchBar    textinput.Model
-}
-
-type helpMenuModalData struct {
-	hotkey         []string
-	description    string
-	hotkeyWorkType hotkeyType
-	subTitle       string
-}
-
 type typingModal struct {
-	location      string
-	open          bool
-	textInput     textinput.Model
-	errorMesssage string
+	location  string
+	open      bool
+	textInput textinput.Model
 }
 
 type editorFinishedMsg struct{ err error }

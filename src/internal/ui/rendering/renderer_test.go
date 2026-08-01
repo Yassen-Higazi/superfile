@@ -4,11 +4,11 @@ import (
 	"flag"
 	"testing"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/yorukot/superfile/src/internal/utils"
+	"github.com/yorukot/superfile/src/pkg/utils"
 )
 
 const (
@@ -81,7 +81,8 @@ func TestRendererBasic(t *testing.T) {
 	})
 
 	t.Run("Invalid config Renderer", func(t *testing.T) {
-		r, err := NewRenderer(getDefaultTestRendererConfig(0, 0, true, false))
+		cfg := getDefaultTestRendererConfig(0, 0, true, false)
+		r, err := NewRenderer(cfg)
 		assert.Nil(t, r)
 		require.Error(t, err)
 	})

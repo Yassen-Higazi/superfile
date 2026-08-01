@@ -7,8 +7,9 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/yorukot/superfile/src/pkg/utils"
+
 	"github.com/yorukot/superfile/src/internal/common"
-	"github.com/yorukot/superfile/src/internal/utils"
 )
 
 const minLinesForBorder = 3
@@ -87,9 +88,9 @@ func (m *model) validateLayout() error { //nolint:gocognit // cumilation of vali
 		}
 
 		// Validate search bar width matches panel width minus padding
-		if panel.SearchBar.Width != panel.GetWidth()-common.InnerPadding {
+		if panel.SearchBar.Width() != panel.GetWidth()-common.InnerPadding {
 			return fmt.Errorf("file panel %v search bar width mismatch: expected %v, got %v",
-				i, panel.GetWidth()-common.InnerPadding, panel.SearchBar.Width)
+				i, panel.GetWidth()-common.InnerPadding, panel.SearchBar.Width())
 		}
 	}
 
@@ -106,12 +107,12 @@ func (m *model) validateLayout() error { //nolint:gocognit // cumilation of vali
 	}
 
 	// Validate overlay panels have less width and height than total
-	if m.helpMenu.open {
-		if m.helpMenu.width >= m.fullWidth {
-			return fmt.Errorf("help menu width %v exceeds full width %v", m.helpMenu.width, m.fullWidth)
+	if m.helpMenu.IsOpen() {
+		if m.helpMenu.GetWidth() >= m.fullWidth {
+			return fmt.Errorf("help menu width %v exceeds full width %v", m.helpMenu.GetWidth(), m.fullWidth)
 		}
-		if m.helpMenu.height >= m.fullHeight {
-			return fmt.Errorf("help menu height %v exceeds full height %v", m.helpMenu.height, m.fullHeight)
+		if m.helpMenu.GetHeight() >= m.fullHeight {
+			return fmt.Errorf("help menu height %v exceeds full height %v", m.helpMenu.GetHeight(), m.fullHeight)
 		}
 	}
 
@@ -215,7 +216,12 @@ func (m *model) validateComponentRender() error {
 	// Validate sidebar render
 	if common.Config.SidebarWidth > 0 {
 		sidebarRender := m.sidebarRender()
-		if err := validateRender(sidebarRender, m.mainPanelHeight+common.BorderPadding, common.Config.SidebarWidth+common.BorderPadding, true); err != nil {
+		if err := validateRender(
+			sidebarRender,
+			m.mainPanelHeight+common.BorderPadding,
+			common.Config.SidebarWidth+common.BorderPadding,
+			true,
+		); err != nil {
 			return fmt.Errorf("sidebar render validation failed: %w", err)
 		}
 	}
@@ -229,7 +235,12 @@ func (m *model) validateComponentRender() error {
 	}
 
 	p := &m.fileModel.FilePreview
-	if err := validateRender(p.GetContent(), p.GetContentHeight(), p.GetContentWidth(), common.Config.EnableFilePreviewBorder); err != nil {
+	if err := validateRender(
+		p.GetContent(),
+		p.GetContentHeight(),
+		p.GetContentWidth(),
+		common.Config.EnableFilePreviewBorder,
+	); err != nil {
 		return fmt.Errorf("file preview render validation failed: %w", err)
 	}
 
@@ -239,13 +250,28 @@ func (m *model) validateComponentRender() error {
 
 	// Validate footer components if visible
 	if m.toggleFooter {
-		if err := validateRender(m.processBarRender(), m.processBarModel.GetHeight(), m.processBarModel.GetWidth(), true); err != nil {
+		if err := validateRender(
+			m.processBarRender(),
+			m.processBarModel.GetHeight(),
+			m.processBarModel.GetWidth(),
+			true,
+		); err != nil {
 			return fmt.Errorf("process bar render validation failed: %w", err)
 		}
-		if err := validateRender(m.fileMetaData.Render(true), m.fileMetaData.GetHeight(), m.fileMetaData.GetWidth(), true); err != nil {
+		if err := validateRender(
+			m.fileMetaData.Render(true),
+			m.fileMetaData.GetHeight(),
+			m.fileMetaData.GetWidth(),
+			true,
+		); err != nil {
 			return fmt.Errorf("metadata render validation failed: %w", err)
 		}
-		if err := validateRender(m.clipboard.Render(), m.clipboard.GetHeight(), m.clipboard.GetWidth(), true); err != nil {
+		if err := validateRender(
+			m.clipboard.Render(),
+			m.clipboard.GetHeight(),
+			m.clipboard.GetWidth(),
+			true,
+		); err != nil {
 			return fmt.Errorf("clipboard render validation failed: %w", err)
 		}
 	}
@@ -300,7 +326,11 @@ func (m *model) validateFinalRender() error { //nolint:gocognit // cumilation of
 			stCol:  m.fullWidth - m.fileModel.ExpectedPreviewWidth,
 			endCol: m.fullWidth - 1,
 		}
-		if err := m.validateComponentPlacement(lines, previewPanelPos, common.Config.EnableFilePreviewBorder); err != nil {
+		if err := m.validateComponentPlacement(
+			lines,
+			previewPanelPos,
+			common.Config.EnableFilePreviewBorder,
+		); err != nil {
 			return fmt.Errorf("preview panel position validation failed: %w", err)
 		}
 	}
@@ -394,7 +424,7 @@ type compPosition struct {
 }
 
 func (m *model) IsOverlayModelOpen() bool {
-	return m.zoxideModal.IsOpen() || m.helpMenu.open || m.promptModal.IsOpen() ||
-		m.getFocusedFilePanel().SortOptions.Open || m.firstUse || m.typingModal.open ||
+	return m.zoxideModal.IsOpen() || m.helpMenu.IsOpen() || m.promptModal.IsOpen() ||
+		m.sortModal.IsOpen() || m.firstUse || m.typingModal.open ||
 		m.notifyModel.IsOpen()
 }

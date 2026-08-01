@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/charmbracelet/bubbles/progress"
+	"charm.land/bubbles/v2/progress"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/yorukot/superfile/src/config/icon"
 	"github.com/yorukot/superfile/src/internal/common"
@@ -27,8 +29,16 @@ type Process struct {
 	DoneTime  time.Time
 }
 
+type FileListProcessor func(items []string) (Process, []string)
+type ProcessFinalizer func(state ProcessState, reqID int) tea.Msg
+type ProcessRunner func(processor FileListProcessor, finalizer ProcessFinalizer, items []string, reqID int) tea.Msg
+
 func NewProcess(id string, currentFile string, operation OperationType, total int) Process {
-	prog := progress.New(common.GenerateGradientColor())
+	prog := progress.New(
+		progress.WithColors(
+			lipgloss.Color(common.Theme.GradientColor[0]),
+			lipgloss.Color(common.Theme.GradientColor[1])),
+		progress.WithScaled(true))
 	prog.PercentageStyle = common.FooterStyle
 	return Process{
 		ID:          id,

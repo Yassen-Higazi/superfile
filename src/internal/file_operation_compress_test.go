@@ -10,8 +10,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/yorukot/superfile/src/pkg/utils"
+
 	"github.com/yorukot/superfile/src/internal/ui/processbar"
-	"github.com/yorukot/superfile/src/internal/utils"
 )
 
 func TestZipSources(t *testing.T) {
@@ -19,10 +20,10 @@ func TestZipSources(t *testing.T) {
 	processBar.ListenForChannelUpdates()
 	t.Cleanup(processBar.SendStopListeningMsgBlocking)
 	tests := []struct {
-		name          string
-		setupFunc     func(t *testing.T, tempDir string) ([]string, error)
-		expectedFiles map[string]string
-		expectError   bool
+		name                string
+		setupFunc           func(t *testing.T, tempDir string) ([]string, error)
+		expectedFiles       map[string]string
+		expectErrorValidate bool
 	}{
 		{
 			name: "multiple directories with subdirectories",
@@ -47,7 +48,7 @@ func TestZipSources(t *testing.T) {
 				"testdir2/":                            "",
 				filepath.Join("testdir2", "file3.txt"): "Content of file3",
 			},
-			expectError: false,
+			expectErrorValidate: false,
 		},
 		{
 			name: "single file",
@@ -59,23 +60,23 @@ func TestZipSources(t *testing.T) {
 			expectedFiles: map[string]string{
 				"single.txt": "Single file content",
 			},
-			expectError: false,
+			expectErrorValidate: false,
 		},
 		{
 			name: "empty list",
 			setupFunc: func(_ *testing.T, _ string) ([]string, error) {
 				return []string{}, nil
 			},
-			expectedFiles: map[string]string{},
-			expectError:   false,
+			expectedFiles:       map[string]string{},
+			expectErrorValidate: false,
 		},
 		{
 			name: "non-existent source",
 			setupFunc: func(_ *testing.T, _ string) ([]string, error) {
 				return []string{"/non/existent/path"}, nil
 			},
-			expectedFiles: nil,
-			expectError:   true,
+			expectedFiles:       nil,
+			expectErrorValidate: true,
 		},
 	}
 
@@ -88,12 +89,15 @@ func TestZipSources(t *testing.T) {
 			}
 
 			targetZip := filepath.Join(tempDir, "test.zip")
-			err = zipSources(sources, targetZip, &processBar)
+			totalFiles, err := validateCompressOperation(sources)
 
-			if tt.expectError {
+			if tt.expectErrorValidate {
 				require.Error(t, err, "zipSources should return error")
-				return
+			} else {
+				require.NoError(t, err, "validateCompressOperation should not return error")
 			}
+
+			err = zipSources(sources, totalFiles, targetZip, &processBar)
 
 			require.NoError(t, err, "zipSources should not return error")
 
@@ -147,6 +151,35 @@ func TestZipSourcesInvalidTarget(t *testing.T) {
 	require.NoError(t, err, "should be able to create test file")
 
 	invalidTarget := "/invalid/path/test.zip"
-	err = zipSources([]string{testFile}, invalidTarget, &processBar)
+	totalFiles, err := validateCompressOperation([]string{testFile})
+	require.NoError(t, err, "valid source generates error on validation")
+	err = zipSources([]string{testFile}, totalFiles, invalidTarget, &processBar)
 	require.Error(t, err, "zipSources should return error for invalid target")
+}
+
+func TestGetZipArchiveName(t *testing.T) {
+	t.Run("Ordinary file with extension", func(t *testing.T) {
+		actual, err := getZipArchiveName("test.doc")
+		require.NoError(t, err)
+		require.Equal(t, "test.zip", actual)
+	})
+	t.Run("Ordinary file without extension", func(t *testing.T) {
+		actual, err := getZipArchiveName("test")
+		require.NoError(t, err)
+		require.Equal(t, "test.zip", actual)
+	})
+	t.Run("Hidden file without extension", func(t *testing.T) {
+		actual, err := getZipArchiveName(".dockerignore")
+		require.NoError(t, err)
+		require.Equal(t, ".dockerignore.zip", actual)
+	})
+	t.Run("Hidden file with extension", func(t *testing.T) {
+		actual, err := getZipArchiveName(".dockerignore.old")
+		require.NoError(t, err)
+		require.Equal(t, ".dockerignore.zip", actual)
+	})
+	t.Run("empty filename", func(t *testing.T) {
+		_, err := getZipArchiveName("")
+		require.ErrorContains(t, err, "empty filename to compress")
+	})
 }

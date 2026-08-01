@@ -78,13 +78,11 @@ Contains the main business logic of the application, organized by functionality:
 ## Code Organization Principles
 
 1. **Separation of Concerns:**
-
    - Configuration management is isolated in the `config/` directory
    - Core business logic lives in `internal/`
    - UI-related code is separated from business logic
 
 2. **Modular Design:**
-
    - Each file has a specific responsibility
    - Related functionality is grouped together
    - Clear dependencies between components
@@ -98,13 +96,11 @@ Contains the main business logic of the application, organized by functionality:
 When contributing to superfile:
 
 1. **Adding New Features:**
-
    - Place new business logic in appropriate `internal/` subdirectories
    - Keep UI-related code separate from business logic
    - Follow existing naming conventions
 
 2. **Making Changes:**
-
    - Maintain the existing file structure
    - Add tests for new functionality
    - Update configuration files if needed
